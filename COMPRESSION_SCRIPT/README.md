@@ -63,9 +63,9 @@ ffmpeg -i ~/Videos/sample.mp4 -vf format=gray -pix_fmt gray -f rawvideo ~/Videos
 ``` bash
 python compress_video.py
 ```
-# Provide `~/Videos/sample_raw.y` as input
-# Provide `~/Videos/sample_compressed` as output
-# Specify the number of frames to process
+**Provide `~/Videos/sample_raw.y` as input**
+**Provide `~/Videos/sample_compressed` as output** 
+**Specify the number of frames to process**
 
 ### 5. Notes
 Ensure the input .y file resolution matches the script's width and height parameters (default: 1920x1080).
