@@ -1,0 +1,10 @@
+# Output folders
+output/
+*.zip
+
+# macOS system files
+.DS_Store
+
+# Python compiled files
+__pycache__/
+*.pyc
