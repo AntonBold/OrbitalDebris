@@ -69,8 +69,8 @@ python compress_video.py
 
 ### 5. Notes
 Ensure the input .y file resolution matches the script's width and height parameters (default: 1920x1080).
-Adjust the threshold parameter to control how pixels are converted to 0 or 1.
 The script includes basic error handling for missing files, permissions, or directory issues.
+**GITHUB WILL NOT TRACK FILES LARGER THAN 100MB** -- Raw .y from ffmpeg conversion will need to be stored only locally. Likewise, compressed files larger than 100mb will need to be stored locally.
 
 **Author**
 Adam Welsh
