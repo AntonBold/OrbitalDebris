@@ -116,7 +116,9 @@ The PS clears the interrupt in its interrupt service routine before reading BRAM
 | AXI Interrupt Controller  | Routes PL interrupt to PS GIC   |
 
 The BRAM controller should be configured in **Simple** mode (not ECC).  
-The BRAM base address must be agreed upon and noted here before implementation: `TBD`
+The BRAM base address must be agreed upon and noted here before implementation: `0xA000_0000`
+
+Interrupt controller address: `0xA001_0000`
 
 ---
 
