@@ -1,0 +1,26 @@
+# Vivado generated build artifacts
+vivado/*.cache
+vivado/*.runs
+vivado/*.sim
+vivado/*.hw
+vivado/*.ip_user_files
+vivado/*.gen
+vivado/.Xil
+
+# IP output products (regenerate with generate_target)
+src/ip/**/synthesis
+src/ip/**/impl
+src/ip/**/simulation
+
+# Logs and journals
+*.jou
+*.log
+*.str
+*.mif
+
+# Checkpoint files (optional — include if you want checkpoints)
+# *.dcp
+
+# OS noise
+.DS_Store
+Thumbs.db
