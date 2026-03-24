@@ -7,6 +7,18 @@ vivado/*.ip_user_files
 vivado/*.gen
 vivado/.Xil
 
+# Vitis generated artifacts
+vitis/**/.metadata
+vitis/**/.Xil
+vitis/**/Debug
+vitis/**/Release
+vitis/**/_ide
+vitis/**/*.elf
+vitis/**/*.bit
+vitis/**/*.bif
+vitis/**/export
+vitis/**/RemoteSystemsTempFiles
+
 # IP output products (regenerate with generate_target)
 src/ip/**/synthesis
 src/ip/**/impl
