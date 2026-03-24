@@ -36,3 +36,4 @@ src/ip/**/simulation
 # OS noise
 .DS_Store
 Thumbs.db
+vivado/debris_tracking_fpga/
