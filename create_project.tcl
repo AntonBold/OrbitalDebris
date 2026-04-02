@@ -114,8 +114,15 @@ if { $validate_required } {
   }
 }
 
+# Portable board files
+set script_dir [file normalize [file dirname [info script]]]
+set board_repo_path [file normalize [file join $script_dir "boards/digilent"]]
+set_param board.repoPaths [list $board_repo_path]
+
+
 # Create project
 create_project ${_xil_proj_name_} ./${_xil_proj_name_} -part xczu5ev-sfvc784-1-e
+set_property BOARD_PART digilentinc.com:gzu_5ev:part0:1.0 [current_project]
 
 # Set the directory path for the new project
 set proj_dir [get_property directory [current_project]]
