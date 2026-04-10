@@ -37,4 +37,12 @@ src/ip/**/simulation
 .DS_Store
 Thumbs.db
 vivado/debris_tracking_fpga/
+
+
+
+# Ensure board files are tracked
+!boards/
+!boards/**
+
+# Don't track hardware file
 *.xsa
