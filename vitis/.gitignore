@@ -1,0 +1,32 @@
+# Ignore build output directory
+/build
+/export
+
+# Ignore object files and dependent files
+.o
+.d
+
+#Ignore logs folder and log files
+/logs
+.log
+
+#Ignore lock files
+.lock
+
+.bin
+.pdi
+.vitisWorkspace.json
+
+_ide/logs
+_ide/.wsdatadebris_app/build/
+debris_app/_ide/
+debris_platform/export/
+debris_platform/logs/
+debris_platform/psu_cortexa53_0/
+debris_platform/zynqmp_fsbl/
+debris_platform/resources/
+debris_platform/hw/
+.rigel_lopper
+debris_app/src/.cache/
+debris_app/src/.clangd
+debris_app/src/compile_commands.json

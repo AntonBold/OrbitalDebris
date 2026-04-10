@@ -46,3 +46,4 @@ vivado/debris_tracking_fpga/
 
 # Don't track hardware file
 *.xsa
+vitis/.rigel_lopper
