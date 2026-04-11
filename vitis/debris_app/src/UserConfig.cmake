@@ -42,6 +42,7 @@ set(USER_COMPILE_SOURCES
 "../../src/app/geometry.c"
 "../../src/app/hungarian.c"
 "../../src/app/track.c"
+"../../src/app/interrupt.c"
 )
 
 # -----------------------------------------
