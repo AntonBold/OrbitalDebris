@@ -30,3 +30,4 @@ debris_platform/hw/
 debris_app/src/.cache/
 debris_app/src/.clangd
 debris_app/src/compile_commands.json
+compile_commands.json

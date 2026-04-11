@@ -27,7 +27,7 @@ set(USER_UNDEFINED_SYMBOLS
 # Example 3: Adding ${CMAKE_SOURCE_DIR}/data/include to add data/include from this project.
 
 set(USER_INCLUDE_DIRECTORIES
-"${CMAKE_CURRENT_SOURCE_DIR}/src/app/include"
+"${CMAKE_CURRENT_SOURCE_DIR}/../../src/app/include"
 )
 
 #Add any source below, they will be added as Compile sources.
@@ -36,7 +36,12 @@ set(USER_INCLUDE_DIRECTORIES
 #Example 3: Adding ${MY_ENV}/data/helloworld.c are expanded using project-specific environment settings.
 set(USER_COMPILE_SOURCES
 "main.c"
-"../../src/app/"
+"../../src/app/bram_io.c"
+"../../src/app/classify.c"
+"../../src/app/cost_matrix.c"
+"../../src/app/geometry.c"
+"../../src/app/hungarian.c"
+"../../src/app/track.c"
 )
 
 # -----------------------------------------
@@ -118,6 +123,7 @@ set(USER_LINK_OMIT_ALL_SYMBOL_INFO )
 # Add any libraries to be linked below, they will be added as extra libraries.
 # User needs to update USER_LINK_DIRECTORIES below with these library search paths.
 set(USER_LINK_LIBRARIES
+"m"
 )
 
 # Add any directories to look for the libraries to be linked.

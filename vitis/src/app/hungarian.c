@@ -13,13 +13,9 @@ int hungarian(float D[MAX_CENTROIDS][MAX_CENTROIDS], int n1, int n2, float unmat
     float cost[MAX_CENTROIDS][MAX_CENTROIDS] = {0};
     int row_covered[MAX_CENTROIDS] = {0};
     int col_covered[MAX_CENTROIDS] = {0};
-    int assignment[MAX_CENTROIDS] = {0};
     int starred[MAX_CENTROIDS][MAX_CENTROIDS] = {0};
     int primed [MAX_CENTROIDS][MAX_CENTROIDS] = {0};
 
-    // Initialize assignment to -1 (unassigned)
-    for (int i = 0; i < n; i++)
-        assignment[i] = -1;
 
     // Copy cost matrix into square working matrix
     // Pad with unmatched_cost for dummy rows/cols
@@ -108,7 +104,7 @@ int hungarian(float D[MAX_CENTROIDS][MAX_CENTROIDS], int n1, int n2, float unmat
                 for (int i = 0; i < n; i++) {
                     for (int j = 0; j < n; j++) {
                         if (row_covered[i]) cost[i][j] += min;
-                        if (!row_covered[j]) cost[i][j] -= min;
+                        if (!col_covered[j]) cost[i][j] -= min;
                     }
                 }
                 continue;
@@ -135,7 +131,6 @@ int hungarian(float D[MAX_CENTROIDS][MAX_CENTROIDS], int n1, int n2, float unmat
                 
                 while (1){
                     // Find starred zero in column
-                    int pr = path_row[path_len - 1];
                     int pc = path_col[path_len - 1];
                     int sr = -1;
                     for (int i = 0; i < n; i++) {

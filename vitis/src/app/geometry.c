@@ -22,7 +22,6 @@ float getAngleBetweenVectors(Vec2 u1, Vec2 u2)
     // extend to 3d for cross product
     float d = u1.x * u2.x + u1.y * u2.y; // dot product
     float cz = u1.x * u2.y - u1.y * u2.x; // z component of cross product
-    float mag = sqrtf((u1.x * u1.x + u1.y * u1.y) * (u2.x * u2.x + u2.y * u2.y));
     
     float a = atan2f(fabsf(cz), d) * (cz < 0 ? -1.0f : 1.0f);
 
