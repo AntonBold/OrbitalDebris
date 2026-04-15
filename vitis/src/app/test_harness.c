@@ -5,8 +5,7 @@
 #include "classify.h"
 #include "track.h"
 
-#define MAX_FRAMES 4000
-#define CSV_PATH "/home/ece/Desktop/centroids.csv"
+#define CSV_PATH "/Users/adamwelsh/Desktop/Capstone/centroids.csv"
 
 // -- ground truth storage --
 
@@ -44,9 +43,9 @@ static int load_csv(const char *path)
 
     while (fscanf(f, "%d,%f,%f,%d\n", &frame, &x, &y, &label) == 4) {
         if (frame != current_frame) {
-            if (frame >= MAX_FRAMES) {
+            if (frame > MAX_FRAMES) {
                 printf("ERROR: frame %d exceeds MAX_FRAMES\n", frame);
-                fclosef(f);
+                fclose(f);
                 return -1;
             }
             current_frame = frame;
@@ -64,7 +63,7 @@ static int load_csv(const char *path)
         gt_frames[frame].frame.count++;
     }
 
-    fclosef(f);
+    fclose(f);
     printf("Loaded %d frames from CSV\n", n_frames);
     return 0;
 }
