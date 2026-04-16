@@ -23,4 +23,18 @@ void getLine(Vec2 p1, Vec2 p2, float l[3]);
 // of the same point across three frames
 void getCenterAngleOfRotation(Vec2 p1, Vec2 p2, Vec2 p3, Vec2 *center, float *angle);
 
+// Get rotation parameters for matched triplets across three frames
+// C1, C2, C3   : centroid frames at t-2, t-1, t
+// M12          : matches between C1 and C2
+// M23          : matches between C2 and C3
+// out          : output rotation set
+void getRotations(const Centroid *C1, const Centroid *C2, const Centroid *C3,
+                  const Match *M12, int nm12,
+                  const Match *M23, int nm23,
+                  RotationSet *out);
+
+// Get distance of each rotation center from the median center
+// Used as input to GESD outlier detection
+void getDistanceFromMedianCenter(const RotationSet *R, float *distances);
+
 #endif // GEOMETRY_H

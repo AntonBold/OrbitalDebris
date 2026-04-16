@@ -53,7 +53,7 @@ void getPerpBisector(Vec2 p1, Vec2 p2, float l[3])
 
     l[0] = nx;
     l[1] = ny;
-    l[3] = -(nx*mx + ny*my);
+    l[2] = -(nx*mx + ny*my);
 }
 
 Vec2 getIntersectionOfTwoLines(float l1[3], float l2[3])
@@ -88,4 +88,98 @@ void getCenterAngleOfRotation(Vec2 p1, Vec2 p2, Vec2 p3, Vec2 *center, float *an
     Vec2 u3 = { p3.x - center->x, p3.y - center->y };
 
     *angle = getAngleBetweenVectors(u2, u3);
+}
+
+void getRotations(const Centroid *C1, const Centroid *C2, const Centroid *C3,
+                  const Match *M12, int nm12,
+                  const Match *M23, int nm23,
+                  RotationSet *out)
+{
+    out->count = 0;
+
+    for (int i = 0; i < nm12; i++) {
+        int i1 = M12[i].from;
+        int i2 = M12[i].to;
+
+        // find if i2 is matched in m23
+        int j = -1;
+        for (int k = 0; k < nm23; k++) {
+            if (M23[k].from == i2) {
+                j = k;
+                break;
+            }
+        }
+        if (j < 0) continue;
+
+        int i3 = M23[j].to;
+
+        Vec2 p1 = { C1[i1].x, C1[i1].y };
+        Vec2 p2 = { C2[i2].x, C2[i2].y };
+        Vec2 p3 = { C3[i3].x, C3[i3].y };
+
+        Vec2 center;
+        float angle;
+        getCenterAngleOfRotation(p1, p2, p3, &center, &angle);
+
+        int idx = out->count;
+        out->rotations[idx].center = center;
+        out->rotations[idx].angle = angle;
+        out->rotations[idx].i1 = i1;
+        out->rotations[idx].i2 = i2;
+        out->rotations[idx].i3 = i3;
+        out->count++;
+    }
+}
+
+void getDistanceFromMedianCenter(const RotationSet *R, float *distances) 
+{
+    if (R->count == 0) return;
+
+    // compute median center
+    float xs[MAX_CENTROIDS];
+    float ys[MAX_CENTROIDS];
+
+    for (int i = 0; i < R->count; i++) {
+        xs[i] = R->rotations[i].center.x;
+        ys[i] = R->rotations[i].center.y;
+    }
+
+    // simple median via insertion sort
+    float sorted_x[MAX_CENTROIDS];
+    float sorted_y[MAX_CENTROIDS];
+    for (int i = 0; i < R->count; i++) {
+        sorted_x[i] = xs[i];
+        sorted_y[i] = ys[i];
+    }
+
+    for (int i = 1; i < R->count; i++) {
+        float kx = sorted_x[i];
+        float ky = sorted_y[i];
+        int j = i - 1;
+        while (j >= 0 && sorted_x[j] > kx) {
+            sorted_x[j+1] = sorted_x[j];
+            sorted_y[j+1] = sorted_y[j];
+            j--;
+        }
+        sorted_x[j+1] = kx;
+        sorted_y[j+1] = ky;
+    }
+
+    float med_x, med_y;
+    int n = R->count;
+    if (n % 2 == 0) {
+        med_x = (sorted_x[n/2 - 1] + sorted_x[n/2]) / 2.0f;
+        med_y = (sorted_y[n/2 - 1] + sorted_y[n/2]) /2.0f;
+    } else {
+        med_x = sorted_x[n/2];
+        med_y = sorted_y[n/2];
+    }
+
+    // compute distance from median center
+    for (int i = 0; i < R->count; i++) {
+        float dx = R->rotations[i].center.x - med_x;
+        float dy = R->rotations[i].center.y - med_y;
+        float d = sqrtf(dx*dx + dy*dy);
+        distances[i] = isnan(d) ? 0.0f : d;
+    }
 }

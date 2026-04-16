@@ -84,14 +84,14 @@ void gesd_outliers(const float *values, int count, int max_outliers, int *is_out
     float R[MAX_CENTROIDS]; // test statistics
     int removed_idx[MAX_CENTROIDS]; // which original indices were removed
     int n = count;
+    
+    for (int i = 0; i < r; i ++ ) R[i] = 0.0f;
 
     // Compute r test statistics by iteratively removing the most extreme value
     for (int i = 0; i < r; i++) {
         float mean = array_mean(working, n);
         float std = array_std(working, n, mean);
         if (std < 1e-6f) break; // cant compute meaningful statistic
-
-        if (std < 1e-10f) break;
 
         // find the value that maximized |x - mean|
         float max_dev = -1.0f;
@@ -256,5 +256,61 @@ void classifyFrame(ClassifiedFrame *memory, int memory_count, const CentroidFram
         // assign labels to matched centroids
         for (int i = 0; i < nm; i++)
             out->labels.labels[matches[i].to] = tf[i] ? LABEL_OBJECT : LABEL_STAR;  
+    }
+
+    // -- rotation based labeling --
+    // requires at least 2 frames in memory to get triplets
+    if (memory_count >= 2 && (config->use_rotation_center || config->use_rotation_angle)) {
+        ClassifiedFrame *prev2 = &memory[memory_count -2];
+        ClassifiedFrame *prev1 = &memory[memory_count-1];
+
+        // only proceed if prev1 has matches back to prev2
+        if (prev1->matches.count > 0 && nm > 0) {
+            RotationSet R;
+            getRotations(prev2->frame.centroids, prev1->frame.centroids,
+                         C2->centroids, prev1->matches.matches,
+                         prev1->matches.count, matches, nm, &R);
+            
+            if (R.count > 0) {
+                int is_outlier[MAX_CENTROIDS] = {0};
+                int8_t rot_tf[MAX_CENTROIDS] = {0};
+
+                if (config->use_rotation_center) {
+                    float distances[MAX_CENTROIDS];
+                    getDistanceFromMedianCenter(&R, distances);
+                    gesd_outliers(distances, R.count, config->max_num_objects, is_outlier);
+                    for (int i = 0; i < R.count; i++)
+                        rot_tf[i] |= is_outlier[i];
+                }
+
+                if (config->use_rotation_angle) {
+                    float angles[MAX_CENTROIDS];
+                    for(int i = 0; i < R.count; i++)
+                        angles[i] = R.rotations[i].angle;
+                    gesd_outliers(angles, R.count, config->max_num_objects, is_outlier);
+                    for (int i = 0; i < R.count; i++)
+                        rot_tf[i] |= is_outlier[i];
+                }
+
+                // combine rotation labels with translation labels
+                // using nanor logic: if either says object, its object
+                for (int i = 0; i < R.count; i++) {
+                    int centroid_idx = R.rotations[i].i3;
+                    int8_t current = out->labels.labels[centroid_idx];
+                    int8_t rot_label = rot_tf[i] ? LABEL_OBJECT : LABEL_STAR;
+
+                    if (current == LABEL_UNKNOWN) {
+                        out->labels.labels[centroid_idx] = rot_label;
+                    } else {
+                        // OR: if either says object, label as object
+                        out->labels.labels[centroid_idx] = (current == LABEL_OBJECT || rot_label == LABEL_OBJECT)
+                                                           ? LABEL_OBJECT : LABEL_STAR;
+                    }
+                }
+
+                // store rotations for next frame
+                out->rotations = R;
+            }
+        }
     }
 }

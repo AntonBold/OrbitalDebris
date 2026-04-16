@@ -7,7 +7,7 @@ void getCostMatrix(const Centroid *C1, int n1, const Centroid *C2, int n2, float
     for(int i = 0; i < n1; i++) {
         for (int j = 0; j < n2; j++) {
             float dx = C1[i].x - C2[j].x;
-            float dy = C2[i].y - C2[j].y;
+            float dy = C1[i].y - C2[j].y;
             D[i][j] = sqrtf(dx*dx + dy*dy);
         }
     }
