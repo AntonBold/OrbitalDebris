@@ -33,8 +33,12 @@ typedef struct {
 void classifyFrame(ClassifiedFrame *memory, int memory_count, const CentroidFrame *new_frame, 
                    const ClassifierConfig *config, ClassifiedFrame *out);
 
-// Returns 1 if value is a statistical outlier among the array, 0 otherwise
-// used to determine if a centroid is an object vs a star
-int isOutlier(float *values, int count, int max_outliers);
+// Returns a bitmask array of which indices are outliers
+// values     : input array
+// count      : number of elements
+// max_outliers: upper bound on number of outliers (r)
+// is_outlier : output array, 1 = outlier, 0 = not, must be size count
+void gesd_outliers(const float *values, int count, int max_outliers, int *is_outlier);
+
 
 #endif // CLASSIFY_H

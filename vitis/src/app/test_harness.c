@@ -106,9 +106,9 @@ int main(void)
 
     // classifier config - matches matlab params
     ClassifierConfig config = {
-        .unmatched_cost             = 100.0f,
-        .max_num_objects            = 10,
-        .delta                      = 10,
+        .unmatched_cost             = 1000.0f,
+        .max_num_objects            = 3,
+        .delta                      = 1,
         .use_translation_magnitude  = 1,
         .use_translation_angle      = 1,
         .use_rotation_center        = 1,
@@ -136,6 +136,18 @@ int main(void)
 
         // Run Classifier
         classifyFrame(clf_memory, clf_memory_count, frame, &config, & clf_current);
+
+        // -- temporary testing checkin --
+        if (t > 300 && t < 800 ) {
+            int obj=0, star=0, unk=0;
+            for(int i=0;i<frame->count;i++){
+                if(clf_current.labels.labels[i]==LABEL_OBJECT) obj++;
+                else if(clf_current.labels.labels[i]==LABEL_STAR) star++;
+                else unk++;
+            }
+            printf("Frame %d: centroids=%d matches=%d obj=%d star=%d unk=%d\n",
+                t, frame->count, clf_current.matches.count, obj, star, unk);
+        }
 
         // compute metrics
         FrameMetrics m = compute_metrics(&clf_current.labels, gt, frame->count);
