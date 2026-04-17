@@ -1,11 +1,12 @@
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
+#include <stdlib.h>
 #include "centroid.h"
 #include "classify.h"
 #include "track.h"
 
-#define CSV_PATH "/Users/adamwelsh/Desktop/orbital-debris/capstone_assets/centroids1.csv"
+#define CSV_PATH "/Users/adamwelsh/Desktop/orbital-debris/capstone_assets/centroids.csv"
 
 // -- ground truth storage --
 
@@ -96,7 +97,7 @@ static FrameMetrics compute_metrics(const LabelSet *predicted, const int8_t *gro
 
 // main
 
-int main(void)
+int main(int argc, char *argv[])
 {
     printf("=== Debris Tracker Test Harness ===\n\n");
     
@@ -104,16 +105,35 @@ int main(void)
     if (load_csv(CSV_PATH) < 0)
         return -1;
 
-    // classifier config - matches matlab params
+    int quick_mode = 0;
+    int config_argc = 0;
+    char *config_argv[8];
+
+    // Separate --quick flag from config args
+    for (int i = 1; i < argc; i++) {
+        if (strcmp(argv[i], "--quick") == 0)
+            quick_mode = 1;
+        else
+            config_argv[config_argc++] = argv[i];
+    }
+
+    int max_frames_to_process = quick_mode ? 500 : n_frames;
+
+
     ClassifierConfig config = {
-        .unmatched_cost             = 1000.0f,
-        .max_num_objects            = 10,
-        .delta                      = 10,
-        .use_translation_magnitude  = 1,
-        .use_translation_angle      = 1,
-        .use_rotation_center        = 1,
-        .use_rotation_angle         = 0,
+        .unmatched_cost            = config_argc > 0 ? atof(config_argv[0]) : 1000.0f,
+        .max_num_objects           = config_argc > 1 ? atoi(config_argv[1]) : 10,
+        .delta                     = config_argc > 2 ? atoi(config_argv[2]) : 10,
+        .use_translation_magnitude = config_argc > 3 ? atoi(config_argv[3]) : 1,
+        .use_translation_angle     = config_argc > 4 ? atoi(config_argv[4]) : 1,
+        .use_rotation_center       = config_argc > 5 ? atoi(config_argv[5]) : 1,
+        .use_rotation_angle        = config_argc > 6 ? atoi(config_argv[6]) : 0,
     };
+
+    printf("Config: uc=%.0f mo=%d d=%d tm=%d ta=%d rc=%d ra=%d\n",
+       config.unmatched_cost, config.max_num_objects, config.delta,
+       config.use_translation_magnitude, config.use_translation_angle,
+       config.use_rotation_center, config.use_rotation_angle);
 
     // State
     ClassifiedFrame clf_memory[DELTA];
@@ -130,7 +150,7 @@ int main(void)
            "Frame", "Spots", "Obj_GT", "TP", "TN", "FP+FN", "UNK");
     printf("--------------------------------------------------------\n");
 
-    for (int t = 0; t < n_frames; t++) {
+    for (int t = 0; t < max_frames_to_process; t++) {
         CentroidFrame *frame = &gt_frames[t].frame;
         int8_t *gt = gt_frames[t].ground_truth;
 
