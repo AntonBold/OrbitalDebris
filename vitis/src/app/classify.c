@@ -3,7 +3,6 @@
 #include "include/hungarian.h"
 #include "include/geometry.h"
 #include "include/centroid.h"
-#include "include/classify.h"
 #include <math.h>
 #include <string.h>
 #include <stdio.h>
@@ -266,7 +265,7 @@ void classifyFrame(ClassifiedFrame *memory, int memory_count, const CentroidFram
 
     // requires at least 2 frames in memory to get triplets
     if (memory_count >= 2 && (config->use_rotation_center || config->use_rotation_angle)) {
-        ClassifiedFrame *prev2 = &memory[0];
+        ClassifiedFrame *prev2 = &memory[memory_count-2];
         ClassifiedFrame *prev1 = &memory[memory_count-1];
 
         // only proceed if prev1 has matches back to prev2
@@ -297,8 +296,7 @@ void classifyFrame(ClassifiedFrame *memory, int memory_count, const CentroidFram
                         rot_tf[i] |= is_outlier[i];
                 }
 
-                // combine rotation labels with translation labels
-                // using nanor logic: if either says object, its object
+                // only label something as object if both translation and rotation agree
                 for (int i = 0; i < R.count; i++) {
                     int centroid_idx = R.rotations[i].i3;
                     int8_t current = out->labels.labels[centroid_idx];
@@ -306,10 +304,12 @@ void classifyFrame(ClassifiedFrame *memory, int memory_count, const CentroidFram
 
                     if (current == LABEL_UNKNOWN) {
                         out->labels.labels[centroid_idx] = rot_label;
+                    } else if (current == LABEL_STAR && rot_label == LABEL_OBJECT) {
+                        out->labels.labels[centroid_idx] = LABEL_OBJECT;
+                    } else if (current == LABEL_OBJECT) {
+                        out->labels.labels[centroid_idx] = LABEL_OBJECT;
                     } else {
-                        // OR: if either says object, label as object
-                        out->labels.labels[centroid_idx] = (current == LABEL_OBJECT || rot_label == LABEL_OBJECT)
-                                                           ? LABEL_OBJECT : LABEL_STAR;
+                        out->labels.labels[centroid_idx] = LABEL_STAR;
                     }
                 }
 
