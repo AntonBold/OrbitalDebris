@@ -211,19 +211,19 @@ void classifyFrame(ClassifiedFrame *memory, int memory_count, const CentroidFram
     getTranslations(C1->centroids, C2->centroids, matches, nm, out->translations);
 
     // DEBUG — print first frame's translations
-    static int print_count = 0;
-    if (print_count < 3 && nm > 0) {
-        print_count++;
-        // printf("=== Translation debug frame call %d (nm=%d) ===\n", print_count, nm);
-        // for (int i = 0; i < nm && i < 5; i++) {
-        //     printf("  T[%d] = (%.4f, %.4f) mag=%.4f\n",
-        //            i,
-        //            out->translations[i].x,
-        //            out->translations[i].y,
-        //            sqrtf(out->translations[i].x * out->translations[i].x +
-        //                  out->translations[i].y * out->translations[i].y));
-        // }
-    }
+    // static int print_count = 0;
+    // if (print_count < 3 && nm > 0) {
+    //     print_count++;
+    //     // printf("=== Translation debug frame call %d (nm=%d) ===\n", print_count, nm);
+    //     // for (int i = 0; i < nm && i < 5; i++) {
+    //     //     printf("  T[%d] = (%.4f, %.4f) mag=%.4f\n",
+    //     //            i,
+    //     //            out->translations[i].x,
+    //     //            out->translations[i].y,
+    //     //            sqrtf(out->translations[i].x * out->translations[i].x +
+    //     //                  out->translations[i].y * out->translations[i].y));
+    //     // }
+    // }
     
     // printf("DEBUG nm=%d before labeling\n", nm);
     // label matched centroids based on translation outliers
@@ -258,10 +258,15 @@ void classifyFrame(ClassifiedFrame *memory, int memory_count, const CentroidFram
             out->labels.labels[matches[i].to] = tf[i] ? LABEL_OBJECT : LABEL_STAR;  
     }
 
-    // -- rotation based labeling --
+    // Phase 1: skip rotation until memory is full
+    if (memory_count < config->delta)
+        goto done_labeling;
+
+    // Phase 2: rotation labeling once memory is full
+
     // requires at least 2 frames in memory to get triplets
     if (memory_count >= 2 && (config->use_rotation_center || config->use_rotation_angle)) {
-        ClassifiedFrame *prev2 = &memory[memory_count -2];
+        ClassifiedFrame *prev2 = &memory[0];
         ClassifiedFrame *prev1 = &memory[memory_count-1];
 
         // only proceed if prev1 has matches back to prev2
@@ -313,4 +318,5 @@ void classifyFrame(ClassifiedFrame *memory, int memory_count, const CentroidFram
             }
         }
     }
+    done_labeling:;
 }

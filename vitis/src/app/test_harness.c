@@ -6,7 +6,7 @@
 #include "classify.h"
 #include "track.h"
 
-#define CSV_PATH "/Users/adamwelsh/Desktop/orbital-debris/capstone_assets/centroids.csv"
+#define CSV_PATH "/Users/adamwelsh/Desktop/orbital-debris/capstone_assets/centroids1.csv"
 
 // -- ground truth storage --
 
