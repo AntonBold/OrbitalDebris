@@ -135,16 +135,10 @@ void getDistanceFromMedianCenter(const RotationSet *R, float *distances)
 {
     if (R->count == 0) return;
 
-    // compute median center
     float xs[MAX_CENTROIDS];
     float ys[MAX_CENTROIDS];
 
-    for (int i = 0; i < R->count; i++) {
-        xs[i] = R->rotations[i].center.x;
-        ys[i] = R->rotations[i].center.y;
-    }
-
-    // simple median via insertion sort
+    // sort x and y independently to get correct medians
     float sorted_x[MAX_CENTROIDS];
     float sorted_y[MAX_CENTROIDS];
     for (int i = 0; i < R->count; i++) {
@@ -152,18 +146,28 @@ void getDistanceFromMedianCenter(const RotationSet *R, float *distances)
         sorted_y[i] = ys[i];
     }
 
+    // sort x independently
     for (int i = 1; i < R->count; i++) {
         float kx = sorted_x[i];
-        float ky = sorted_y[i];
         int j = i - 1;
         while (j >= 0 && sorted_x[j] > kx) {
             sorted_x[j+1] = sorted_x[j];
-            sorted_y[j+1] = sorted_y[j];
             j--;
         }
         sorted_x[j+1] = kx;
+    }
+
+    // sort y independently
+    for (int i = 1; i < R->count; i++) {
+        float ky = sorted_y[i];
+        int j = i - 1;
+        while (j >= 0 && sorted_y[j] > ky) {
+            sorted_y[j+1] = sorted_y[j];
+            j--;
+        }
         sorted_y[j+1] = ky;
     }
+
 
     float med_x, med_y;
     int n = R->count;

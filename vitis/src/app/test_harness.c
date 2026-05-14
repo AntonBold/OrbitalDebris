@@ -7,6 +7,7 @@
 #include "track.h"
 
 #define CSV_PATH "/Users/adamwelsh/Desktop/orbital-debris/capstone_assets/centroids1.csv"
+#define MAX_DELTA 30
 
 // -- ground truth storage --
 
@@ -136,7 +137,7 @@ int main(int argc, char *argv[])
        config.use_rotation_center, config.use_rotation_angle);
 
     // State
-    ClassifiedFrame clf_memory[DELTA];
+    ClassifiedFrame clf_memory[MAX_DELTA];
     int clf_memory_count = 0;
     ClassifiedFrame clf_current;
 
@@ -154,6 +155,8 @@ int main(int argc, char *argv[])
         CentroidFrame *frame = &gt_frames[t].frame;
         int8_t *gt = gt_frames[t].ground_truth;
 
+        
+
         // Run Classifier
         classifyFrame(clf_memory, clf_memory_count, frame, &config, & clf_current);
 
@@ -168,6 +171,8 @@ int main(int argc, char *argv[])
         //     printf("Frame %d: centroids=%d matches=%d obj=%d star=%d unk=%d\n",
         //         t, frame->count, clf_current.matches.count, obj, star, unk);
         // }
+
+        
 
         // compute metrics
         FrameMetrics m = compute_metrics(&clf_current.labels, gt, frame->count);
@@ -191,13 +196,22 @@ int main(int argc, char *argv[])
                    m.TP, m.TN, m.FP + m.FN, m.UNK);
         }
 
-        // update classifier memory
-        if (clf_memory_count < DELTA) {
+        // update classifier memory ring buffer
+        if (clf_memory_count < config.delta) {
             clf_memory[clf_memory_count++] = clf_current;
         } else {
-            for (int i = 0; i < DELTA - 1; i++)
-                clf_memory[i] = clf_memory[i+1];
-            clf_memory[DELTA-1] = clf_current;
+            // shift left — decrement all prev_frame_idx to stay valid
+            for (int i = 0; i < config.delta - 1; i++) {
+                clf_memory[i] = clf_memory[i + 1];
+                // adjust stored prev_frame_idx after shift
+                if (clf_memory[i].prev_frame_idx > 0)
+                    clf_memory[i].prev_frame_idx--;
+                else
+                    clf_memory[i].prev_frame_idx = -1;
+            }
+            clf_memory[config.delta - 1] = clf_current;
+
+            clf_memory[config.delta - 1].prev_frame_idx = config.delta - 2;
         }
     }
 
