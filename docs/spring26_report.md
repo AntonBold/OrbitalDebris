@@ -95,12 +95,12 @@ The PL video pipeline processes HDMI input in a fully streaming fashion at one p
 
 ### 4.2 MATLAB vs FPGA Centroid Extraction
 
-The FPGA approach replicates the same algorithmic concept as MATLAB's `regionprops()` but in a streaming hardware implementation:
+The PL approach diverges from MATLAB's `regionprops()` because of hardware implementation
 
 | Stage        | MATLAB (regionprops)      | FPGA (Streaming)                           |
 | ------------ | ------------------------- | ------------------------------------------ |
 | Input        | Full frame in memory      | Pixel stream (AXI4-Stream)                 |
-| Grayscale    | `rgb2gray()`              | RGB → Grayscale hardware                   |
+| Grayscale    | `rgb2gray()`              | Grayscale hardware block                   |
 | Binarization | `imbinarize(I, T)`        | Threshold hardware block                   |
 | CCL          | Implicit in regionprops   | Streaming CCL (neighbor check + labeling)  |
 | Centroid     | `regionprops('Centroid')` | Centroid Accumulator (sum_x, sum_y, count) |
@@ -108,13 +108,15 @@ The FPGA approach replicates the same algorithmic concept as MATLAB's `regionpro
 
 MATLAB processes full frames using high-level functions. The FPGA processes pixels in a streaming pipeline at 1 pixel/clock, explicitly implementing CCL, memory management, and accumulation in hardware.
 
+The MATLAB approach processes full frames one at a time. The FPGA breaks a frame into lines, processing the current line and the previous line one at a time. 
+
 ### 4.3 BRAM Allocation
 
 Three BRAMs are used in the PL pipeline:
 
 - **Line Buffer BRAM:** Stores previous row labels for neighbor lookups during streaming CCL. Size: 1920 entries × label width.
-- **Equivalence Table BRAM:** Stores union-find parent mappings for label merging during CCL. Updated per frame.
-- **Stats BRAM:** Stores centroid accumulation data (sum_x 32-bit, sum_y 32-bit, count 21-bit) per label. Output location read by PS.
+- **Equivalence Table BRAM:** Stores mappings for label merging during CCL. Updated per frame.
+- **Stats BRAM:** Stores centroid accumulation data (sum_x 32-bit, sum_y 32-bit, count 21-bit) per label. Output location read by PS (which then calculates approximate centroid positions)
 
 ### 4.4 Implementation
 
@@ -127,12 +129,19 @@ The pipeline is implemented using three complementary approaches:
 ### 4.5 Current Status & Next Steps
 
 > **Anthony: update this section with your current status, what is working, what is in simulation, and what remains.**
+Given the setbacks in setting up a working machine, development in Vivado has only just started. However, the foundation is laid above; all that is required is implementation.
 
-Planned next steps per the presentation:
+The Orbital Debris Video Processing design will closely follow the the front-end of Vivado's Genesuys ZU HDMI tutorial project, which means there is a detailed block diagram our work can draw from. We have conducted successful simulations of said HDMI tutorial project; now we must insert our own centroid logic and construct test cases. This is no easy task, but I am confident.
 
-- Route the complete block diagram
+Once the logic is complete, simulation will begin. Once a fully working video processing front end is complete; I will work with Adam to create the interface between PS & PL.
+
+More concretely, I must:
+
+- Route the complete block diagram based of the HDMI project
 - Write the SpotCentroids algorithm in Verilog
+- Insert the SpotCentroids hardware blocks alongside our other custom RTLs into the block diagram from above.
 - Write testbenches and validate the full pipeline
+- Work with Adam to confirm our PL and PS sides are integratable. 
 
 ---
 
@@ -270,7 +279,7 @@ When the object/star motion ratio exceeds ~1.2 (Run1), translation-based GESD re
 
 ### 8.1 PL Pipeline (Anthony)
 
-> **Anthony: fill in remaining work for your side here.**
+Summarizing what was covered in detail above for my section, the workflow will be:
 
 - Route complete block diagram
 - Write SpotCentroids algorithm in Verilog
