@@ -128,7 +128,6 @@ The pipeline is implemented using three complementary approaches:
 
 ### 4.5 Current Status & Next Steps
 
-> **Anthony: update this section with your current status, what is working, what is in simulation, and what remains.**
 Given the setbacks in setting up a working machine, development in Vivado has only just started. However, the foundation is laid above; all that is required is implementation.
 
 The Orbital Debris Video Processing design will closely follow the the front-end of Vivado's Genesuys ZU HDMI tutorial project, which means there is a detailed block diagram our work can draw from. We have conducted successful simulations of said HDMI tutorial project; now we must insert our own centroid logic and construct test cases. This is no easy task, but I am confident.
