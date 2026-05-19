@@ -309,6 +309,13 @@ Summarizing what was covered in detail above for my section, the workflow will b
 
 - HDMI output overlay with labeled objects
 - Labeled video generation
+- Full Camera front-end: A laboratory setup where synthetic orbital debris scenes are displayed on a high-resolution screen/projector and captured by a monochrome camera. The camera output is streamed through HDMI into the FPGA pipeline, where the tracking algorithms runs under more realistic optical conditions such as blur, sensor noise, brightness spreading, and low-light imaging effects. 
+
+### 8.6 Needs
+
+- Recommended PC Specs in Section 3.1
+- Recommended SSD/Memory Drives in Section 3.1 (NVMe preferred)
+- Scientific camera and high-resolution display/projector for realtime camera streaming. Far 
 
 ---
 
