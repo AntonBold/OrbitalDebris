@@ -29,50 +29,51 @@ Three frames of centroid data are held in BRAM at all times. The oldest frame is
 
 ## Centroid Word Format
 
-Each centroid is stored as one **32-bit word**:
+Each centroid is stored as 2 **32-bit words**:
 
 ```
-Bit 31        Bit 21  Bit 20       Bit 11  Bit 10   Bit 9-0
-[ X (11 bits)       ][ Y (11 bits)       ][ valid ][ reserved ]
+Word 1
+Bit 31-16                 Bit 15-0
+[ X (16 bits)           ][ Y (16 bits)       ]
+Word 2
+Bit 31-7                   Bits 7-1     Bit 0        
+[ Reserved               ][pixel count][valid]
 ```
 
-| Bits  | Field    | Description                        |
-| ----- | -------- | ---------------------------------- |
-| 31:21 | X        | Centroid x coordinate, 0–1919      |
-| 20:10 | Y        | Centroid y coordinate, 0–1079      |
-| 10    | Valid    | 1 = valid centroid, 0 = empty slot |
-| 9:0   | Reserved | Set to 0                           |
-
-X range 0–1919 fits in 11 bits (max 2047).  
-Y range 0–1079 fits in 11 bits (max 2047).
+| Word  | Bits  | Field     | Description                         |
+| ----- | ----- | --------  | ----------------------------------- |
+|   1   | 31:16 | X         | X oordinates sum, 0–38380(1919*20)  |
+|   1   | 15:0  | Y         | Centroid y coordinate, 0–38380      |
+|   2   |  0    | Valid     | 1 = valid centroid, 0 = empty slot  |
+|   2   | 7:1   | \# pixels | Number of pixels in this centroid   |
 
 ---
 
 ## BRAM Layout
 
-Total BRAM size: **3 frames × 257 words × 4 bytes = 3,084 bytes** (~3 KB)
+Total BRAM size: **3 frames × (4 byte header + 256 centroids x 2 words × 4 bytes)  = 6156 bytes** (~6 KB)
 
-Each frame occupies a fixed 257-word block:
+Each frame occupies a fixed 513-word block:
 
 ```
-Offset 0x000        Frame 0 header      (1 word)
-Offset 0x004        Frame 0 centroid 0  (1 word)
-Offset 0x008        Frame 0 centroid 1  (1 word)
+Offset 0x000        Frame 0 header       (1 word)
+Offset 0x004        Frame 0 centroid 0   (2 word)
+Offset 0x00C        Frame 0 centroid 1   (2 word)
 ...
-Offset 0x400        Frame 0 centroid 255 (1 word)
+Offset 0x7FC        Frame 0 centroid 255 (2 word)
 
-Offset 0x404        Frame 1 header      (1 word)
-Offset 0x408        Frame 1 centroid 0  (1 word)
+Offset 0x804        Frame 1 header       (1 word)
+Offset 0x808        Frame 1 centroid 0   (2 word)
 ...
-Offset 0x808        Frame 1 centroid 255 (1 word)
+Offset 0x1000       Frame 1 centroid 255 (2 word)
 
-Offset 0x80C        Frame 2 header      (1 word)
-Offset 0x810        Frame 2 centroid 0  (1 word)
+Offset 0x1008       Frame 2 header       (1 word)
+Offset 0x100c       Frame 2 centroid 0   (2 word)
 ...
-Offset 0xC0C        Frame 2 centroid 255 (1 word)
+Offset 0x1804       Frame 2 centroid 255 (2 word)
 ```
 
-Frame block size: `257 × 4 = 1028 bytes = 0x404`
+Frame block size: `513 × 4 = 2052 bytes = 0x804`
 
 ### Frame Header Word
 
