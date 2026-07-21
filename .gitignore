@@ -47,3 +47,8 @@ vivado/debris_tracking_fpga/
 # Don't track hardware file
 *.xsa
 vitis/.rigel_lopper
+
+# Verilator generated artifacts
+sim/build/
+obj_dir/
+*.vcd
