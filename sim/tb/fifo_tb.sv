@@ -1,6 +1,9 @@
 `timescale 1ns/10ps
 
-module line_buffer_tb();
+module fifo_tb();
+
+    localparam LINE_DEPTH = 1919;
+    localparam SIZE_LD = $clog2(LINE_DEPTH);
 
     // system
     logic clk, rst;
@@ -13,15 +16,17 @@ module line_buffer_tb();
     // outputs
     logic full, empty;
     logic [15:0] out_data; // 2 bytes because of reading 2 at once
+    logic ne_valid;
 
 
     // test bench internals
     logic [7:0] n_data;
     logic [7:0] ne_data;
     logic [7:0] wr_data;
+    logic[7:0] expected;
 
-    line_buffer #(
-        .DEPTH(256)
+    fifo #(
+        .DEPTH(LINE_DEPTH)
     ) uut (
         .i_clk(clk),
         .i_rst(rst),
@@ -30,7 +35,8 @@ module line_buffer_tb();
         .i_data(data),
         .o_data(out_data),
         .full(full),
-        .empty(empty)
+        .empty(empty),
+        .o_ne_valid(ne_valid)
     );
 
     // clk gen
@@ -48,7 +54,7 @@ module line_buffer_tb();
             errors = errors + 1;
             $display("ERROR: empty flag was not high in initial state (no stuff in fifo)");
         end
-        for(int i = 0; i < 9'd256; i = i + 1) begin
+        for(int i = 0; i < LINE_DEPTH; i = i + 1) begin
             wr_data = i[7:0];
             write_data(wr_data);
         end
@@ -61,7 +67,7 @@ module line_buffer_tb();
             $display("ERROR: empty flag was high when fifo should have been full");
         end
 
-        read_data(n_data, ne_data);
+        read_data(n_data, ne_data); // [0, 1] read out
         
         assert (full == 1'b0) else begin
             errors = errors + 1;
@@ -80,7 +86,7 @@ module line_buffer_tb();
             $display("ERROR: second pixel read not expected value (1)");
         end
 
-        read_data(n_data, ne_data);
+        read_data(n_data, ne_data); // [1 2] read out
 
         assert (full == 1'b0) else begin
             errors = errors + 1;
@@ -98,6 +104,28 @@ module line_buffer_tb();
             errors = errors + 1;
             $display("ERROR: third pixel read not expected value (2)");
         end
+
+        for(int i = 0; i < LINE_DEPTH - 2; i = i + 1) begin
+
+            read_data(n_data, ne_data);
+            expected = (8'd2 + i[7:0]);
+            assert(n_data == expected) else begin
+                errors = errors + 1;
+                $display("ERROR: did not receive correct n data in loop. actual: %d expected: %d", n_data, expected);
+            end
+            if (ne_valid) begin
+                assert(ne_data == expected+1'b1) else begin
+                    errors = errors + 1;
+                    $display("ERROR: did not receive correct ne data in loop. actual: %d expected: %d Iteration: %d, cuts to %d", ne_data, expected+1'b1, i, i[7:0]);
+                end
+            end
+        end
+
+        assert(empty == 1'b1) else begin
+            errors = errors + 1;
+            $display("ERROR: empty flag not asserted when all values were read");
+        end
+
 
         $display("Finished");
         if(errors == 0) begin
@@ -124,6 +152,15 @@ module line_buffer_tb();
         ne_data = out_data[7:0];
         @(posedge clk);
     endtask : read_data
+
+    task read_write(
+        input logic [7:0] i_d,
+        output logic [7:0] n_data,
+        output logic [7:0] ne_data
+    );
+        read_data(n_data, ne_data);
+        write_data(i_d);
+    endtask : read_write
 
     task pulse_read();
         @(posedge clk);
