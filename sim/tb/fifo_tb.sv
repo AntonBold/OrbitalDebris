@@ -15,13 +15,11 @@ module fifo_tb();
 
     // outputs
     logic full, empty;
-    logic [15:0] out_data; // 2 bytes because of reading 2 at once
-    logic ne_valid;
+    logic [7:0] out_data; // 2 bytes because of reading 2 at once
 
 
     // test bench internals
     logic [7:0] n_data;
-    logic [7:0] ne_data;
     logic [7:0] wr_data;
     logic[7:0] expected;
 
@@ -35,8 +33,7 @@ module fifo_tb();
         .i_data(data),
         .o_data(out_data),
         .full(full),
-        .empty(empty),
-        .o_ne_valid(ne_valid)
+        .empty(empty)
     );
 
     // clk gen
@@ -67,7 +64,7 @@ module fifo_tb();
             $display("ERROR: empty flag was high when fifo should have been full");
         end
 
-        read_data(n_data, ne_data); // [0, 1] read out
+        read_data(n_data); // [0] read out
         
         assert (full == 1'b0) else begin
             errors = errors + 1;
@@ -81,12 +78,8 @@ module fifo_tb();
             errors = errors + 1;
             $display("ERROR: first pixel read not expected value (0)");
         end
-        assert(ne_data == 8'd1) else begin
-            errors = errors + 1;
-            $display("ERROR: second pixel read not expected value (1)");
-        end
 
-        read_data(n_data, ne_data); // [1 2] read out
+        read_data(n_data); // [1 2] read out
 
         assert (full == 1'b0) else begin
             errors = errors + 1;
@@ -100,24 +93,14 @@ module fifo_tb();
             errors = errors + 1;
             $display("ERROR: second pixel read not expected value (1)");
         end
-        assert(ne_data == 8'd2) else begin
-            errors = errors + 1;
-            $display("ERROR: third pixel read not expected value (2)");
-        end
 
         for(int i = 0; i < LINE_DEPTH - 2; i = i + 1) begin
 
-            read_data(n_data, ne_data);
+            read_data(n_data);
             expected = (8'd2 + i[7:0]);
             assert(n_data == expected) else begin
                 errors = errors + 1;
                 $display("ERROR: did not receive correct n data in loop. actual: %d expected: %d", n_data, expected);
-            end
-            if (ne_valid) begin
-                assert(ne_data == expected+1'b1) else begin
-                    errors = errors + 1;
-                    $display("ERROR: did not receive correct ne data in loop. actual: %d expected: %d Iteration: %d, cuts to %d", ne_data, expected+1'b1, i, i[7:0]);
-                end
             end
         end
 
@@ -145,20 +128,17 @@ module fifo_tb();
 
     task read_data(
         output logic [7:0] n_data,
-        output logic [7:0] ne_data
     );
         pulse_read();
-        n_data = out_data[15:8];
-        ne_data = out_data[7:0];
+        n_data = out_data[7:0];
         @(posedge clk);
     endtask : read_data
 
     task read_write(
         input logic [7:0] i_d,
         output logic [7:0] n_data,
-        output logic [7:0] ne_data
     );
-        read_data(n_data, ne_data);
+        read_data(n_data);
         write_data(i_d);
     endtask : read_write
 
