@@ -148,8 +148,6 @@ The design splits the processing pipeline into two domains:
 
 ## Team
 
-- Adam Welsh - MPSoC Infrastructure Development
+- Adam Welsh - MPSoC Infrastructure Development, Centroiding Algorithm HDL Implementation
 
 - Anthony Bolda - Video Data Infrastructure Development
-
-- Lemon Scott - Centroid Algorithm HDL Implementation
