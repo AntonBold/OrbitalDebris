@@ -19,6 +19,15 @@ vitis/**/*.bif
 vitis/**/export
 vitis/**/RemoteSystemsTempFiles
 
+# Vivado build output
+/build/
+
+.Xil/
+
+# Xsim
+xsim.dir/
+*.wdb
+
 # IP output products (regenerate with generate_target)
 src/ip/**/synthesis
 src/ip/**/impl
