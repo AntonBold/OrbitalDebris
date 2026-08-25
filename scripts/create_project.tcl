@@ -65,7 +65,7 @@ set_property file_type SystemVerilog [get_files *.sv]
 # Regenerate the BD (and every IP inside it) into the project.
 # To refresh this file after editing the BD in the GUI:
 #   write_bd_tcl -force $repo_root/src/bd/top_level.tcl
-set bd_tcl $repo_root/src/bd/system_bd.tcl
+set bd_tcl $repo_root/src/bd/top_level.tcl
 if {[file exists $bd_tcl]} {
     source $bd_tcl
 
