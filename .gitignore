@@ -39,7 +39,7 @@ vitis/**/RemoteSystemsTempFiles
 /src/bd/*/.Xil/
 /src/bd/*/ui/
 /src/bd/*/hw_handoff/
-/src/bd/*/ipsharedj
+/src/bd/*/ipshared
 
 # Xsim
 xsim.dir/
