@@ -24,6 +24,9 @@ vitis/**/RemoteSystemsTempFiles
 
 .Xil/
 
+# Vivado BD outputs
+*.bda
+
 # Xsim
 xsim.dir/
 *.wdb
