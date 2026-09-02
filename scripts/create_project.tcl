@@ -21,7 +21,7 @@ set repo_root [file normalize $repo_root]
 
 set proj_name  "debris_tracking"
 set build_dir  $repo_root/build
-set part       "xczu5ev-sfvc784-1-e"          ;# verify against your board
+set part       "xczu5ev-sfvc784-1-e"     
 set board_part "digilentinc.com:gzu_5ev:part0:1.1"
 
 # ---- version guard ----------------------------------------------------------
@@ -63,10 +63,10 @@ set_property file_type SystemVerilog [get_files *.sv]
 
 # ---- block designs ------------------------------------------------------
 # Each BD is created and lives permanently at src/bd/<name>/<name>.bd --
-# own directory, owned by one person, referenced in place (like the .sv
+# own directory, referenced in place (like the .sv
 # files). Nothing to copy or export; the tracked file is the live file.
-#   pl_ps.bd    -- Zynq PS + AXI4-Lite BRAM controller  (you)
-#   hdmi_rx.bd  -- HDMI RX + AXI-Stream master           (teammate)
+#   pl_ps.bd    -- Zynq PS + AXI4-Lite BRAM controller  
+#   hdmi_rx.bd  -- HDMI RX + AXI-Stream master           
 #
 # Neither BD is set as project top -- both become sub-blocks instantiated
 # by top.sv.
@@ -85,6 +85,7 @@ proc add_bd {repo_root name} {
     }
 
     # -top intentionally omitted: this BD is a sub-block, not project top.
+    generate_target all $bd_file
     set wrapper [make_wrapper -files $bd_file -force]
     add_files -norecurse $wrapper
     puts "Added BD $name -> wrapper $wrapper"
