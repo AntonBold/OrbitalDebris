@@ -6,44 +6,46 @@
 #
 # Everything Vivado generates lands in build/ (gitignored). Nothing in build/
 # is a source of truth; delete it and re-run.
+#
+# Two block designs live side by side (pl_ps, hdmi_rx), each wrapped but
+# neither set as the project top. top.sv instantiates both wrapper modules
+# plus the CCL pipeline and is the actual project top.
 # =============================================================================
 
 # ---- paths ------------------------------------------------------------------
-# info script works whether launched from repo root or scripts/
 set script_dir [file normalize [file dirname [info script]]]
-set repo_root  [file normalize $script_dir]
+if {[catch {exec git -C $script_dir rev-parse --show-toplevel} repo_root]} {
+    error "not a git checkout (or git not on PATH): $repo_root"
+}
+set repo_root [file normalize $repo_root]
 
 set proj_name  "debris_tracking"
 set build_dir  $repo_root/build
 set part       "xczu5ev-sfvc784-1-e"          ;# verify against your board
-set board_part "digilentinc.com:gzu_5ev:part0:1.1"   ;# see note below
+set board_part "digilentinc.com:gzu_5ev:part0:1.1"
 
 # ---- version guard ----------------------------------------------------------
-# Vivado project files are not forward/backward compatible. Fail loudly rather
-# than let a teammate silently upgrade the .xpr.
 set required_version "2025.2"
 if {[version -short] ne $required_version} {
     puts "WARNING: built with Vivado $required_version, running [version -short]"
 }
 
-# ---- board files ------------------------------------------------------------
+# ---- board files --------------------------------------------------------
+# MUST come before create_project.
 set_param board.repoPaths [list $repo_root/boards]
-
 
 # ---- project ----------------------------------------------------------------
 file mkdir $build_dir
 create_project -force $proj_name $build_dir/$proj_name -part $part
 set_property board_part      $board_part [current_project]
 set_property target_language Verilog     [current_project]
-
-# Keep generated IP inside the project, never beside the tracked sources.
-set_property ip_output_repo $build_dir/$proj_name/ip_cache [current_project]
+set_property ip_output_repo  $build_dir/$proj_name/ip_cache [current_project]
 
 # ---- RTL --------------------------------------------------------------------
-# Prefer an explicit list over glob: a stray scratch file in src/hdl/ silently
-# entering the build is a bad afternoon. If the list gets long, read it from a
-# manifest file (src/hdl/files.f) and keep that tracked.
+# top.sv must exist before the BD sections below -- Add Module in each BD
+# resolves against modules already present in sources_1.
 set rtl_files [list \
+    $repo_root/src/hdl/top.sv \
     $repo_root/src/hdl/ccl_decision.sv \
     $repo_root/src/hdl/comb_mux.sv \
     $repo_root/src/hdl/fifo.sv \
@@ -55,39 +57,52 @@ set_property file_type SystemVerilog [get_files *.sv]
 
 # ---- constraints ------------------------------------------------------------
 # add_files -norecurse -fileset constrs_1 [list \
-    
+#     $repo_root/src/constraints/pins.xdc \
+#     $repo_root/src/constraints/timing.xdc \
 # ]
 
-# Optional: force ordering if you split early/late constraints
-# set_property PROCESSING_ORDER LATE [get_files timing.xdc]
+# ---- block designs ------------------------------------------------------
+# Each BD gets its own tracked export + own directory, owned by one person,
+# so the two of you aren't touching the same file.
+#   pl_ps.tcl    -- Zynq PS + AXI4-Lite BRAM controller  (you)
+#   hdmi_rx.tcl  -- HDMI RX + AXI-Stream master           (teammate)
+#
+# Neither is set as project top -- both become sub-blocks instantiated by
+# top.sv. To refresh either export after GUI edits:
+#   write_bd_tcl -force $repo_root/src/bd/<name>/<name>.tcl
 
-# ---- block design -----------------------------------------------------------
-# Regenerate the BD (and every IP inside it) into the project.
-# To refresh this file after editing the BD in the GUI:
-#   write_bd_tcl -force $repo_root/src/bd/top_level.tcl
-set bd_tcl $repo_root/src/bd/top_level.tcl
-if {[file exists $bd_tcl]} {
+proc add_bd {repo_root name} {
+    set bd_tcl "$repo_root/src/bd/$name/$name.tcl"
+    if {![file exists $bd_tcl]} {
+        puts "NOTE: no BD tcl for $name yet, skipping"
+        return
+    }
     source $bd_tcl
 
-    set bd_file [get_files -of_objects [get_filesets sources_1] *.bd]
+    set bd_file [get_files -quiet -of_objects [get_filesets sources_1] "$name.bd"]
     if {[llength $bd_file] != 1} {
-      error "expected only one BD, got : $bd_file"
+        error "expected exactly one BD file named $name.bd, got: $bd_file"
     }
 
-    set wrapper [make_wrapper -files $bd_file -top -force]
+    # -top intentionally omitted: this BD is a sub-block, not project top.
+    set wrapper [make_wrapper -files $bd_file -force]
     add_files -norecurse $wrapper
-} else {
-    puts "NOTE: no BD tcl yet, skipping"
+    puts "Added BD $name -> wrapper $wrapper"
 }
 
-# ---- simulation fileset -----------------------------------------------------
-# XSim for BD/AXI-level tests the Verilator flow can't reach.
-set tb_files [glob -nocomplain $repo_root/sim/tb/*.sv]
+add_bd $repo_root "pl_ps"
+add_bd $repo_root "hdmi_rx"
 
+# ---- top / compile order -----------------------------------------------
+# top.sv (in src/hdl/) instantiates pl_ps_wrapper and hdmi_rx_wrapper.
+set_property top top [get_filesets sources_1]
+update_compile_order -fileset sources_1
+
+# ---- simulation fileset -----------------------------------------------------
+set tb_files [glob -nocomplain $repo_root/sim/tb/*.sv]
 if {[llength $tb_files] > 0} {
     add_files -fileset sim_1 -norecurse $tb_files
     update_compile_order -fileset sim_1
-
     if {[llength [get_files -quiet -of_objects [get_filesets sim_1] tb_top.sv]] == 1} {
         set_property top tb_top [get_filesets sim_1]
     } else {
