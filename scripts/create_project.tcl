@@ -62,22 +62,22 @@ set_property file_type SystemVerilog [get_files *.sv]
 # ]
 
 # ---- block designs ------------------------------------------------------
-# Each BD gets its own tracked export + own directory, owned by one person,
-# so the two of you aren't touching the same file.
-#   pl_ps.tcl    -- Zynq PS + AXI4-Lite BRAM controller  (you)
-#   hdmi_rx.tcl  -- HDMI RX + AXI-Stream master           (teammate)
+# Each BD is created and lives permanently at src/bd/<name>/<name>.bd --
+# own directory, owned by one person, referenced in place (like the .sv
+# files). Nothing to copy or export; the tracked file is the live file.
+#   pl_ps.bd    -- Zynq PS + AXI4-Lite BRAM controller  (you)
+#   hdmi_rx.bd  -- HDMI RX + AXI-Stream master           (teammate)
 #
-# Neither is set as project top -- both become sub-blocks instantiated by
-# top.sv. To refresh either export after GUI edits:
-#   write_bd_tcl -force $repo_root/src/bd/<name>/<name>.tcl
+# Neither BD is set as project top -- both become sub-blocks instantiated
+# by top.sv.
 
 proc add_bd {repo_root name} {
-    set bd_tcl "$repo_root/src/bd/$name/$name.tcl"
-    if {![file exists $bd_tcl]} {
-        puts "NOTE: no BD tcl for $name yet, skipping"
+    set src_bd "$repo_root/src/bd/$name/$name.bd"
+    if {![file exists $src_bd]} {
+        puts "NOTE: no tracked .bd for $name yet, skipping"
         return
     }
-    source $bd_tcl
+    add_files -norecurse -fileset sources_1 $src_bd
 
     set bd_file [get_files -quiet -of_objects [get_filesets sources_1] "$name.bd"]
     if {[llength $bd_file] != 1} {
