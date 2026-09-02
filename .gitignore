@@ -27,12 +27,19 @@ vitis/**/RemoteSystemsTempFiles
 # Vivado BD outputs
 /src/bd/*/*.bda
 /src/bd/*/*.bxml
+/src/bd/*/*.veo 
+/src/bd/*/*.vho
+/src/bd/*/*.xdc
+/src/bd/*/*.sv
+/src/bd/*/*.sveo
 /src/bd/*/hdl/
 /src/bd/*/ip/
 /src/bd/*/synth/
 /src/bd/*/sim/
 /src/bd/*/.Xil/
 /src/bd/*/ui/
+/src/bd/*/hw_handoff/
+/src/bd/*/ipsharedj
 
 # Xsim
 xsim.dir/
