@@ -38,7 +38,7 @@ set_param board.repoPaths [list $repo_root/boards]
 file mkdir $build_dir
 create_project -force $proj_name $build_dir/$proj_name -part $part
 set_property board_part      $board_part [current_project]
-set_property target_language VHDL        [current_project]
+set_property target_language Verilog        [current_project]
 set_property ip_output_repo  $build_dir/$proj_name/ip_cache [current_project]
 
 # ---- RTL --------------------------------------------------------------------

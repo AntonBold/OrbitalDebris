@@ -32,6 +32,7 @@ vitis/**/RemoteSystemsTempFiles
 /src/bd/*/synth/
 /src/bd/*/sim/
 /src/bd/*/.Xil/
+/src/bd/*/ui/
 
 # Xsim
 xsim.dir/
