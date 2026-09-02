@@ -2,10 +2,12 @@
   "design": {
     "design_info": {
       "boundary_crc": "0x0",
+      "device": "xczu5ev-sfvc784-1-e",
       "name": "hdmi_rx",
       "rev_ctrl_bd_flag": "RevCtrlBdOff",
       "synth_flow_mode": "Hierarchical",
-      "tool_version": "2025.2"
+      "tool_version": "2025.2",
+      "validated": "true"
     },
     "design_tree": {}
   }

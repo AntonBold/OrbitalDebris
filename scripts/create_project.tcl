@@ -37,8 +37,8 @@ set_param board.repoPaths [list $repo_root/boards]
 # ---- project ----------------------------------------------------------------
 file mkdir $build_dir
 create_project -force $proj_name $build_dir/$proj_name -part $part
-set_property board_part      $board_part [current_project]
-set_property target_language Verilog     [current_project]
+set_property board_part      $board_part    [current_project]
+set_property target_language Verilog  [current_project]
 set_property ip_output_repo  $build_dir/$proj_name/ip_cache [current_project]
 
 # ---- RTL --------------------------------------------------------------------
@@ -93,7 +93,7 @@ proc add_bd {repo_root name} {
     }
 
     # -top intentionally omitted: this BD is a sub-block, not project top.
-    set wrapper [make_wrapper -files $bd_file -force]
+    set wrapper [make_wrapper -files $bd_file -top -force]
     add_files -norecurse $wrapper
 
     # Close so the next add_bd call doesn't act on the wrong current design.
