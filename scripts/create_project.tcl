@@ -21,7 +21,7 @@ set repo_root [file normalize $repo_root]
 
 set proj_name  "debris_tracking"
 set build_dir  $repo_root/build
-set part       "xczu5ev-sfvc784-1-e"     
+set part       "xczu5ev-sfvc784-1-e"       
 set board_part "digilentinc.com:gzu_5ev:part0:1.1"
 
 # ---- version guard ----------------------------------------------------------
@@ -38,7 +38,7 @@ set_param board.repoPaths [list $repo_root/boards]
 file mkdir $build_dir
 create_project -force $proj_name $build_dir/$proj_name -part $part
 set_property board_part      $board_part [current_project]
-set_property target_language Verilog        [current_project]
+set_property target_language Verilog     [current_project]
 set_property ip_output_repo  $build_dir/$proj_name/ip_cache [current_project]
 
 # ---- RTL --------------------------------------------------------------------
@@ -63,10 +63,10 @@ set_property file_type SystemVerilog [get_files *.sv]
 
 # ---- block designs ------------------------------------------------------
 # Each BD is created and lives permanently at src/bd/<name>/<name>.bd --
-# own directory, referenced in place (like the .sv
+# own directory referenced in place (like the .sv
 # files). Nothing to copy or export; the tracked file is the live file.
 #   pl_ps.bd    -- Zynq PS + AXI4-Lite BRAM controller  
-#   hdmi_rx.bd  -- HDMI RX + AXI-Stream master           
+#   hdmi_rx.bd  -- HDMI RX + AXI-Stream master         
 #
 # Neither BD is set as project top -- both become sub-blocks instantiated
 # by top.sv.
@@ -84,10 +84,20 @@ proc add_bd {repo_root name} {
         error "expected exactly one BD file named $name.bd, got: $bd_file"
     }
 
+    # The BD must be OPEN before generate_target works -- a referenced .bd
+    # that has only been added has no synthesis target, and make_wrapper
+    # reports that as a misleading "wrapper not supported for <language>".
+    open_bd_design $bd_file
+    if {[catch {generate_target all $bd_file} msg]} {
+        error "generate_target failed for $name: $msg"
+    }
+
     # -top intentionally omitted: this BD is a sub-block, not project top.
-    generate_target all $bd_file
     set wrapper [make_wrapper -files $bd_file -force]
     add_files -norecurse $wrapper
+
+    # Close so the next add_bd call doesn't act on the wrong current design.
+    close_bd_design [current_bd_design]
     puts "Added BD $name -> wrapper $wrapper"
 }
 
