@@ -110,7 +110,7 @@ set_property top top [get_filesets sources_1]
 update_compile_order -fileset sources_1
 
 # ---- simulation fileset -----------------------------------------------------
-set tb_files [glob -nocomplain $repo_root/sim/tb/*.sv]
+set tb_files [glob -nocomplain $repo_root/src/tb/*.sv]
 if {[llength $tb_files] > 0} {
     add_files -fileset sim_1 -norecurse $tb_files
     update_compile_order -fileset sim_1
@@ -120,7 +120,7 @@ if {[llength $tb_files] > 0} {
         puts "NOTE: no tb_top.sv found, letting Vivado infer sim top"
     }
 } else {
-    puts "NOTE: no testbenches in sim/tb, skipping sim fileset"
+    puts "NOTE: no testbenches in src/tb, skipping sim fileset"
 }
 
 puts "Project created at $build_dir/$proj_name/$proj_name.xpr"
