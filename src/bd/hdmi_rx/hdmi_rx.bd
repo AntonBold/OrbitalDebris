@@ -6,36 +6,20 @@
       "name": "hdmi_rx",
       "rev_ctrl_bd_flag": "RevCtrlBdOff",
       "synth_flow_mode": "Hierarchical",
-      "tool_version": "2025.2",
-      "validated": "true"
+      "tool_version": "2025.2"
     },
     "design_tree": {
       "c_accum_0": "",
-      "clk_wiz": ""
+      "clk_wiz": "",
+      "tcc_encoder_3gpplte_0": ""
     },
     "ports": {
       "clk_100MHz": {
         "type": "clk",
         "direction": "I",
         "parameters": {
-          "CLK_DOMAIN": {
-            "value": "hdmi_rx_clk_100MHz",
-            "value_src": "default"
-          },
           "FREQ_HZ": {
             "value": "100000000"
-          },
-          "FREQ_TOLERANCE_HZ": {
-            "value": "0",
-            "value_src": "default"
-          },
-          "INSERT_VIP": {
-            "value": "0",
-            "value_src": "default"
-          },
-          "PHASE": {
-            "value": "0.0",
-            "value_src": "default"
           }
         }
       },
@@ -43,10 +27,6 @@
         "type": "rst",
         "direction": "I",
         "parameters": {
-          "INSERT_VIP": {
-            "value": "0",
-            "value_src": "default"
-          },
           "POLARITY": {
             "value": "ACTIVE_HIGH"
           }
@@ -74,6 +54,13 @@
             "value": "100.0"
           }
         }
+      },
+      "tcc_encoder_3gpplte_0": {
+        "vlnv": "xilinx.com:ip:tcc_encoder_3gpplte:4.0",
+        "ip_revision": "22",
+        "xci_name": "hdmi_rx_tcc_encoder_3gpplte_0_0",
+        "xci_path": "ip/hdmi_rx_tcc_encoder_3gpplte_0_0/hdmi_rx_tcc_encoder_3gpplte_0_0.xci",
+        "inst_hier_path": "tcc_encoder_3gpplte_0"
       }
     },
     "nets": {
@@ -86,7 +73,8 @@
       "clk_wiz_clk_out1": {
         "ports": [
           "clk_wiz/clk_out1",
-          "c_accum_0/CLK"
+          "c_accum_0/CLK",
+          "tcc_encoder_3gpplte_0/clk"
         ]
       },
       "reset_rtl_1": {
