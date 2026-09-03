@@ -1,88 +1,13 @@
 {
   "design": {
     "design_info": {
-      "boundary_crc": "0x99EAC15B5065E353",
+      "boundary_crc": "0x0",
       "device": "xczu5ev-sfvc784-1-e",
       "name": "hdmi_rx",
       "rev_ctrl_bd_flag": "RevCtrlBdOff",
       "synth_flow_mode": "Hierarchical",
       "tool_version": "2025.2"
     },
-    "design_tree": {
-      "c_accum_0": "",
-      "clk_wiz": "",
-      "tcc_encoder_3gpplte_0": ""
-    },
-    "ports": {
-      "clk_100MHz": {
-        "type": "clk",
-        "direction": "I",
-        "parameters": {
-          "FREQ_HZ": {
-            "value": "100000000"
-          }
-        }
-      },
-      "reset_rtl": {
-        "type": "rst",
-        "direction": "I",
-        "parameters": {
-          "POLARITY": {
-            "value": "ACTIVE_HIGH"
-          }
-        }
-      }
-    },
-    "components": {
-      "c_accum_0": {
-        "vlnv": "xilinx.com:ip:c_accum:12.0",
-        "ip_revision": "21",
-        "xci_name": "hdmi_rx_c_accum_0_0",
-        "xci_path": "ip/hdmi_rx_c_accum_0_0/hdmi_rx_c_accum_0_0.xci",
-        "inst_hier_path": "c_accum_0",
-        "has_run_ip_tcl": "true"
-      },
-      "clk_wiz": {
-        "vlnv": "xilinx.com:ip:clk_wiz:6.0",
-        "ip_revision": "17",
-        "xci_name": "hdmi_rx_clk_wiz_0",
-        "xci_path": "ip/hdmi_rx_clk_wiz_0/hdmi_rx_clk_wiz_0.xci",
-        "inst_hier_path": "clk_wiz",
-        "has_run_ip_tcl": "true",
-        "parameters": {
-          "CLKOUT1_REQUESTED_OUT_FREQ": {
-            "value": "100.0"
-          }
-        }
-      },
-      "tcc_encoder_3gpplte_0": {
-        "vlnv": "xilinx.com:ip:tcc_encoder_3gpplte:4.0",
-        "ip_revision": "22",
-        "xci_name": "hdmi_rx_tcc_encoder_3gpplte_0_0",
-        "xci_path": "ip/hdmi_rx_tcc_encoder_3gpplte_0_0/hdmi_rx_tcc_encoder_3gpplte_0_0.xci",
-        "inst_hier_path": "tcc_encoder_3gpplte_0"
-      }
-    },
-    "nets": {
-      "clk_100MHz_1": {
-        "ports": [
-          "clk_100MHz",
-          "clk_wiz/clk_in1"
-        ]
-      },
-      "clk_wiz_clk_out1": {
-        "ports": [
-          "clk_wiz/clk_out1",
-          "c_accum_0/CLK",
-          "tcc_encoder_3gpplte_0/clk"
-        ]
-      },
-      "reset_rtl_1": {
-        "ports": [
-          "reset_rtl",
-          "clk_wiz/reset"
-        ]
-      }
-    }
+    "design_tree": {}
   }
 }
