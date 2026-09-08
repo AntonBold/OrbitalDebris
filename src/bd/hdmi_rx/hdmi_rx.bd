@@ -19,6 +19,11 @@
         "xci_path": "ip/hdmi_rx_v_hdmi_rx_ss_0_0/hdmi_rx_v_hdmi_rx_ss_0_0.xci",
         "inst_hier_path": "v_hdmi_rx_ss_0",
         "has_run_ip_tcl": "true",
+        "parameters": {
+          "C_EXDES_TOPOLOGY": {
+            "value": "2"
+          }
+        },
         "interface_ports": {
           "LINK_DATA0_IN": {
             "mode": "Slave",
