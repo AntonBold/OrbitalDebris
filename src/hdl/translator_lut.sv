@@ -42,12 +42,56 @@ module translator_lut #(
     assign dof = mem[addrf];
     assign dog = mem[addrg];
 
+    // State machine for internal reset
+    typedef enum logic {
+        IDLE,
+        RESETTING
+    } state_t;
+    
+    state_t state, next_state;
+    logic [ADDR_SIZE-1:0] reset_counter;
+    
+    // Internal write signals to mux between external inputs and reset logic
+    logic internal_we;
+    logic [ADDR_SIZE-1:0] internal_addrd;
+    logic [DATA_WIDTH-1:0] internal_dind;
+    
+    assign internal_we    = (state == RESETTING) ? 1'b1          : i_we;
+    assign internal_addrd = (state == RESETTING) ? reset_counter : addrd;
+    assign internal_dind  = (state == RESETTING) ? reset_counter : dind;
+
+    // State machine and counter sequential logic
     always_ff @(posedge i_clk) begin
         if (i_rst) begin
-
+            state <= RESETTING;
+            reset_counter <= '0;
+        end else begin
+            state <= next_state;
+            if (state == RESETTING) begin
+                reset_counter <= reset_counter + 1'b1;
+            end
         end
-        else if (i_we) begin
-            mem[addrd] <= dind
+    end
+    
+    // Next state combinational logic
+    always_comb begin
+        next_state = state;
+        case (state)
+            IDLE: begin
+                // Stay in IDLE until external i_rst kicks us back to RESETTING via the ff block
+            end
+            RESETTING: begin
+                if (reset_counter == DEPTH - 1) begin
+                    next_state = IDLE;
+                end
+            end
+        endcase
+    end
+
+    // Memory write block using the internal muxed signals
+    always_ff @(posedge i_clk) begin
+        if (internal_we) begin
+            mem[internal_addrd] <= internal_dind;
         end
     end
 
