@@ -42,7 +42,7 @@ Bit 31-7                   Bits 7-1     Bit 0
 
 | Word  | Bits  | Field     | Description                         |
 | ----- | ----- | --------  | ----------------------------------- |
-|   1   | 31:16 | X         | X oordinates sum, 0–38380(1919*20)  |
+|   1   | 31:16 | X         | X coordinates sum, 0–38380(1919*20)  |
 |   1   | 15:0  | Y         | Centroid y coordinate, 0–38380      |
 |   2   |  0    | Valid     | 1 = valid centroid, 0 = empty slot  |
 |   2   | 7:1   | \# pixels | Number of pixels in this centroid   |
