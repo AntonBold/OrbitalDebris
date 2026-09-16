@@ -63,6 +63,7 @@ src/ip/**/simulation
 .DS_Store
 Thumbs.db
 vivado/debris_tracking_fpga/
+.vscode/
 
 
 
