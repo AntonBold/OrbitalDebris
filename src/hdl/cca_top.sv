@@ -55,11 +55,13 @@ feature_extract #(
     .i_clk(i_clk),
     .i_rst(i_rst),
     /* will need some control signals from control unit */
-    .valid_coll(dec_fe_valid_coll),
-    .valid_label(dec_fe_valid_label),
-    .trans_label(dec_fe_trans_label),
-    .trans_min(dec_fe_trans_min),
-    .trans_max(dec_fe_trans_max)
+    .i_x_coord(),
+    .i_y_coord(),
+    .i_valid_coll(dec_fe_valid_coll),
+    .i_valid_label(dec_fe_valid_label),
+    .i_trans_label(dec_fe_trans_label),
+    .i_trans_min(dec_fe_trans_min),
+    .i_trans_max(dec_fe_trans_max)
 
     // will also need to assemble data out ??
 );
