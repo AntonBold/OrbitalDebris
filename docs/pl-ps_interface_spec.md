@@ -33,17 +33,17 @@ Each centroid is stored as 2 **32-bit words**:
 
 ```
 Word 1
-Bit 31-16                 Bit 15-0
-[ X (16 bits)           ][ Y (16 bits)       ]
+Bit 31-0
+[ X sum (32 bits)                                   ]
 Word 2
-Bit 31-7                   Bits 7-1     Bit 0        
-[ Reserved               ][pixel count][valid]
+Bit 31-28   Bits 27-8                Bits 7-1     Bit 0        
+[ Reserved ][ Y sum (20 bits)      ][pixel count][valid]
 ```
 
 | Word  | Bits  | Field     | Description                         |
 | ----- | ----- | --------  | ----------------------------------- |
-|   1   | 31:16 | X         | X coordinates sum, 0–38380(1919*20)  |
-|   1   | 15:0  | Y         | Centroid y coordinate, 0–38380      |
+|   1   | 31:0  | X sum     | X coordinates sum, 32-bit           |
+|   2   | 27:8  | Y sum     | Y coordinates sum, 20-bit           |
 |   2   |  0    | Valid     | 1 = valid centroid, 0 = empty slot  |
 |   2   | 7:1   | \# pixels | Number of pixels in this centroid   |
 
@@ -137,9 +137,8 @@ On interrupt:
 
 ```c
 typedef struct {
-    uint16_t x;       // 0–1919
-    uint16_t y;       // 0–1079
-    uint8_t  valid;
+    uint32_t x_sum;       
+    uint32_t word2_meta;  // bits 27:8 = Y sum, bits 7:1 = pixel count, bit 0 = valid
 } Centroid;
 
 typedef struct {

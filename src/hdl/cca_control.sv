@@ -64,3 +64,5 @@ end
 
 assign o_first_row = i_tuser | first_row;
 assign o_first_col = i_tuser | reg_was_prev_pixel_last;
+
+endmodule
