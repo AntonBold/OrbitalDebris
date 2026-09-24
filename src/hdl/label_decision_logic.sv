@@ -6,13 +6,13 @@ module label_decision_logic #(
     input logic i_pixel_data,
     input logic first_row,
     input logic first_col,
-    input logic [LABEL_SIZE-1:0] i_trans_label_n,
-    input logic [LABEL_SIZE-1:0] i_trans_label_w,
-    output logic [LABEL_SIZE-1:0] o_labeled_pixel,
+    input logic [$clog2(NUM_LABELS)-1:0] i_trans_label_n,
+    input logic [$clog2(NUM_LABELS)-1:0] i_trans_label_w,
+    output logic [$clog2(NUM_LABELS)-1:0] o_labeled_pixel,
     output logic valid_label,
     output logic o_lut_we,
-    output logic [LABEL_SIZE-1:0] o_lut_addrd,
-    output logic [LABEL_SIZE-1:0] o_lut_dind
+    output logic [$clog2(NUM_LABELS)-1:0] o_lut_addrd,
+    output logic [$clog2(NUM_LABELS)-1:0] o_lut_dind
 );
 
     localparam LABEL_SIZE = $clog2(NUM_LABELS);

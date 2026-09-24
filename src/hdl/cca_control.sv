@@ -16,7 +16,7 @@ module cca_control #(
     output logic o_first_row,
     output logic o_first_col,
     output logic [$clog2(WIDTH)-1:0] o_x_coord,
-    output logic [$clog2(HEIGHT)-1:0] o_y_coord;
+    output logic [$clog2(HEIGHT)-1:0] o_y_coord,
     
     input  logic i_dump_complete,
     output logic o_interrupt
@@ -28,7 +28,7 @@ logic reg_is_first_row;
 
 typedef enum logic {
     S_firstrow      = 1'b0,
-    S_notfirstrow   = 1'b1n
+    S_notfirstrow   = 1'b1
 } state_t;
 
 state_t state, next_state;

@@ -38,18 +38,31 @@ logic zeros_ram [0:NUM_LABELS-1];
 logic [LABEL_SIZE-1:0] addra, addrb;
 logic we_a_ft, we_b_zt;
 
+
+
+// state machine signals
+
+logic [LABEL_SIZE:0] read_ptr;
+logic [7:0] valid_centroid_count;
+logic [1:0] frame_slot;
+logic [31:0] bram_base_addr;
+logic [31:0] current_bram_addr;
+
+
 typedef enum logic[3:0] {
     S_accum         = 3'd0,
-    S_dump_read     = 3'd1,
-    S_dump_w1       = 3'd2,
-    S_dump_w2       = 3'd3,
-    S_dump_head     = 3'd4,
-    S_done          = 3'd5
+    S_dump_addr     = 3'd1,
+    S_dump_read     = 3'd2,
+    S_dump_w1       = 3'd3,
+    S_dump_w2       = 3'd4,
+    S_dump_head     = 3'd5,
+    S_done          = 3'd6
 } state_t;
 
 state_t state, next_state;
 
-assign we_a_ft = i_valid_label || (state != S_accum);
+logic dump_clear_we;
+assign we_a_ft = i_valid_label || dump_clear_we;
 assign we_b_zt = i_valid_coll;
 
 // inputs to fe table
@@ -87,6 +100,9 @@ logic [31:0] new_area, new_x;
 logic [19:0] new_y;
 
 always_comb begin
+    new_area    = '0;
+    new_x       = '0;
+    new_y       = '0;
     if (state != S_accum) begin
         new_area    = '0;
         new_x       = '0;
@@ -123,17 +139,7 @@ always_ff @(posedge i_clk) begin
     end
 end
 
-
-
-
-
-// state machine stuff
-
-logic [LABEL_SIZE-1:0] read_ptr;
-logic [7:0] valid_centroid_count;
-logic [1:0] frame_slot;
-logic [31:0] bram_base_addr;
-logic [31:0] current_bram_addr;
+// state machine
 
 always_ff @(posedge i_clk) begin
     if (i_rst) begin
@@ -145,7 +151,7 @@ always_ff @(posedge i_clk) begin
         state <= next_state;
 
         // counter logic
-        if ((state == S_dump_read && read_area_a == 0) || (state == S_dump_w2)) begin
+        if (dump_clear_we) begin
             read_ptr <= read_ptr + 1'b1;
         end
         // reset
@@ -168,22 +174,29 @@ always_comb begin
     o_bram_we   = 4'b0000;
     o_bram_en   = 1'b0;
     o_dump_complete = 1'b0;
+    dump_clear_we = 1'b0;
 
     case(state) 
         S_accum: begin
             if (i_frame_done) begin
+                next_state = S_dump_addr;
+            end
+        end
+        S_dump_addr: begin
+            if(read_ptr == NUM_LABELS) begin
+                next_state = S_dump_head;
+            end
+            else begin
                 next_state = S_dump_read;
             end
         end
         S_dump_read: begin
-            if(read_ptr == NUM_LABELS) begin
-                next_state = S_dump_head;
-            end
-            else if (read_area_a > 0) begin
+            if (read_area_a > 0) begin
                 next_state = S_dump_w1;
             end
             else begin
-                next_state = S_dump_read;
+                next_state = S_dump_addr;
+                dump_clear_we = 1'b1;
             end
         end
         S_dump_w1: begin
@@ -198,7 +211,8 @@ always_comb begin
             o_bram_we = 4'b1111;
             o_bram_addr = current_bram_addr;
             o_bram_wdata = {4'b0, read_y_a, read_area_a[6:0], 1'b1};
-            next_state = S_dump_read;
+            next_state = S_dump_addr;
+            dump_clear_we = 1'b1;
         end
         S_dump_head: begin
             o_bram_en = 1'b1;

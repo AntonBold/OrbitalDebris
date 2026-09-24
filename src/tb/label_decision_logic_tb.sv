@@ -51,7 +51,10 @@ module label_decision_logic_tb();
         (pixel_data && (trans_label_n != 0) && (trans_label_w != 0) && (trans_label_n != trans_label_w)) 
         |-> lut_we;
     endproperty
-    assert property (p_collision_we) else $error("SVA: lut_we not asserted during collision");
+    assert property (p_collision_we) 
+        $display("[%0t] SVA PASSED: lut_we asserted on collision", $time);
+    else 
+        $error("[%0t] SVA FAILED: lut_we not asserted during collision", $time);
 
     // 2. Collision correctly maps MAX to Address and MIN to Data
     property p_collision_max_min;
@@ -61,7 +64,10 @@ module label_decision_logic_tb();
          (lut_addrd == trans_label_n || lut_addrd == trans_label_w) &&
          (lut_dind == trans_label_n || lut_dind == trans_label_w));
     endproperty
-    assert property (p_collision_max_min) else $error("SVA: Collision MAX/MIN mapping is incorrect");
+    assert property (p_collision_max_min) 
+        $display("[%0t] SVA PASSED: MAX/MIN mapping correct", $time);
+    else 
+        $error("[%0t] SVA FAILED: Collision MAX/MIN mapping is incorrect", $time);
 
     // ==========================================
     // Stimulus (To be filled later)

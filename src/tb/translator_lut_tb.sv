@@ -56,7 +56,10 @@ module translator_lut_tb();
         (i_we) |=> (doa == $past(dind) || addra != $past(addrd)); 
         // If we wrote data, and we read the same address next cycle, data must match
     endproperty
-    assert property (p_write_read_latency) else $error("SVA: RAM Write-to-Read mismatch");
+    assert property (p_write_read_latency) 
+        $display("[%0t] SVA PASSED: RAM Write-to-Read latency matched!", $time);
+    else 
+        $error("[%0t] SVA FAILED: RAM Write-to-Read mismatch", $time);
 
     // ==========================================
     // Stimulus (To be filled later)

@@ -56,19 +56,27 @@ module cca_control_tb();
         @(posedge clk) disable iff (rst)
         (tvalid && tuser) |-> first_col;
     endproperty
-    assert property (p_first_col_on_tuser) else $error("SVA: first_col not high on TUSER");
+    assert property (p_first_col_on_tuser) 
+        $display("[%0t] SVA PASSD: first_col asserted on TUSER",$time);
+    else $error("[%0t] SVA ERROR: first_col not high on TUSER", $time);
 
     // 2. first_col should be high on the first valid pixel after TLAST
     property p_first_col_after_tlast;
         @(posedge clk) disable iff (rst)
         (tvalid && tlast) |=> (tvalid[->1] |-> first_col);
     endproperty
-    assert property (p_first_col_after_tlast) else $error("SVA: first_col not high after TLAST");
+    assert property (p_first_col_after_tlast) 
+        $display("[%0t] SVA PASSED: first_col was high on the first valid pixel after TLAST", $time);
+    else $error("[%0t] SVA ERROR: first_col not high after TLAST", $time);
 
     // ==========================================
     // Stimulus (To be filled later)
     // ==========================================
     initial begin
+        $display("");
+        $display("Starting...");
+        $display("");
+
         rst = 1;
         tuser = 0;
         tlast = 0;
@@ -116,6 +124,7 @@ module cca_control_tb();
         dump_complete = 0;
 
         #100;
+        $display("FINISHED");
         $finish;
     end
 

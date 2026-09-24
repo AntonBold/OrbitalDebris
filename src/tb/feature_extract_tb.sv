@@ -64,14 +64,20 @@ module feature_extract_tb();
         @(posedge clk) disable iff (rst)
         valid_coll |-> dut.we_b_zt;
     endproperty
-    assert property (p_zeros_table_we) else $error("SVA: Zeros table not invalidated on collision");
+    assert property (p_zeros_table_we) 
+        $display("[%0t] SVA PASSED: Zeros table invalidated on collision", $time);
+    else 
+        $error("[%0t] SVA FAILED: Zeros table not invalidated on collision", $time);
 
     // 2. BRAM Write Enable should only be active during DUMP states, not ACCUMULATE
     property p_bram_we_isolation;
         @(posedge clk) disable iff (rst)
         (dut.state == 3'd0 /* S_accum */) |-> (bram_we == 4'b0000);
     endproperty
-    assert property (p_bram_we_isolation) else $error("SVA: BRAM WE active during ACCUMULATE state");
+    assert property (p_bram_we_isolation) 
+        // We only want to log failures for this one, because logging passes would flood 
+        // the console every single clock cycle of the active video frame!
+        else $error("[%0t] SVA FAILED: BRAM WE active during ACCUMULATE state", $time);
 
     // ==========================================
     // Stimulus (To be filled later)
@@ -112,14 +118,25 @@ module feature_extract_tb();
         repeat(2) @(posedge clk);
 
         // Trigger Frame Dump
+        $display("[%0t] Triggering Frame Dump...", $time);
         frame_done = 1;
         frame_count = 1;
         @(posedge clk);
         frame_done = 0;
 
-        // Wait for state machine to finish dumping BRAM
-        wait(dump_complete == 1'b1);
-        @(posedge clk);
+        // Add a timeout fallback so the simulation doesn't hang indefinitely
+        $display("[%0t] Waiting for dump_complete...", $time);
+        fork
+            begin
+                wait(dump_complete == 1'b1);
+                $display("[%0t] Dump Complete caught!", $time);
+            end
+            begin
+                #50000; // 50,000 ns timeout (plenty of time for 1024 cycles)
+                $display("[%0t] TIMEOUT ERROR: dump_complete never asserted!", $time);
+            end
+        join_any
+        disable fork;
 
         #100;
         $finish;

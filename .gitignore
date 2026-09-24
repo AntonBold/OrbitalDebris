@@ -79,3 +79,10 @@ vitis/.rigel_lopper
 sim/build/
 obj_dir/
 *.vcd
+
+# Modelsim artifacts
+
+work/
+modelsim.ini
+transcript
+vsim.wlf
