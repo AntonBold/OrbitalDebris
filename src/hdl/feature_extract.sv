@@ -135,7 +135,7 @@ logic [1:0] frame_slot;
 logic [31:0] bram_base_addr;
 logic [31:0] current_bram_addr;
 
-always_ff @(posedge clk) begin
+always_ff @(posedge i_clk) begin
     if (i_rst) begin
         state <= S_accum;
         read_ptr <= 1;
@@ -151,6 +151,14 @@ always_ff @(posedge clk) begin
         // reset
         if (state == S_done) begin
             read_ptr <= 1;
+            if (frame_slot == 2'd2)
+                frame_slot <= '0;
+            else
+                frame_slot <= frame_slot + 1'b1;
+        end
+
+        if (state == S_dump_w2) begin
+            valid_centroid_count <= valid_centroid_count + 1'b1;
         end
     end
 end
@@ -189,13 +197,13 @@ always_comb begin
             o_bram_en = 1'b1;
             o_bram_we = 4'b1111;
             o_bram_addr = current_bram_addr;
-            o_bram_wdata = {4'b0, read_y_a, read_area_a, 1'b1};
+            o_bram_wdata = {4'b0, read_y_a, read_area_a[6:0], 1'b1};
             next_state = S_dump_read;
         end
         S_dump_head: begin
             o_bram_en = 1'b1;
             o_bram_we = 4'b1111;
-            o_bram_addr = current_bram_addr;
+            o_bram_addr = bram_base_addr;
             o_bram_wdata = {i_frame_count, valid_centroid_count};
             next_state = S_done;
         end
@@ -212,6 +220,27 @@ always_comb begin
             o_dump_complete = 1'b0;
         end
     endcase
+end
+
+
+// bram address handling
+
+always_comb begin
+    case (frame_slot)
+        2'd0: bram_base_addr = 32'hA000_0000;
+        2'd1: bram_base_addr = 32'hA000_0804;
+        2'd2: bram_base_addr = 32'hA000_1008;
+        default: bram_base_addr = 32'hA000_0000;
+    endcase
+end
+
+always_ff @(posedge i_clk) begin
+    if(state == S_accum) begin
+        // reset pointer
+        current_bram_addr <= bram_base_addr + 32'd4;
+    end else if (state == S_dump_w1 || state == S_dump_w2) begin
+        current_bram_addr <= current_bram_addr + 32'd4;
+    end
 end
 
 endmodule
