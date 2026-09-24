@@ -9,6 +9,7 @@ module ccl_decision #(
     input logic i_data,
     input logic i_first_row,
     input logic i_first_col,
+    input logic i_frame_done,
     output logic o_valid_label,
     output logic o_valid_coll,
     output logic [LABEL_SIZE-1:0] o_trans_label,
@@ -42,7 +43,7 @@ module ccl_decision #(
         .DEPTH(NUM_LABELS)
     ) tl (
         .i_clk(i_clk),
-        .i_rst(i_rst),
+        .i_rst(i_rst | i_frame_done),
 
         .dind(lut_dind),
         .i_we(lut_we),
