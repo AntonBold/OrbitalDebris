@@ -16,6 +16,7 @@ module feature_extract #(
 
     // control signal from CCA control
     input logic i_frame_done,
+    input logic [23:0] i_frame_count,
 
     // AXI Bram interface (PS side)
     output logic [31:0] o_bram_addr,
@@ -48,12 +49,16 @@ typedef enum logic[3:0] {
 
 state_t state, next_state;
 
-assign we_a_ft = i_valid_label;
+assign we_a_ft = i_valid_label || (state != S_accum);
 assign we_b_zt = i_valid_coll;
 
 // inputs to fe table
 always_comb begin
-    if (i_valid_coll) begin
+    if (state != S_accum) begin
+        addra = read_ptr;
+        addrb = '0;
+    end 
+    else if (i_valid_coll) begin
         addra = i_trans_min;
         addrb = i_trans_max;
     end else begin
@@ -83,9 +88,10 @@ logic [19:0] new_y;
 
 always_comb begin
     if (state != S_accum) begin
-        addra = read_ptr;
-        addrb = '0;
-    end 
+        new_area    = '0;
+        new_x       = '0;
+        new_y       = '0;
+    end
     else if (i_valid_coll) begin
         new_area    = read_area_a + read_area_b + 1'b1;
         new_x       = read_x_a + read_x_b + i_x_coord;
@@ -137,6 +143,15 @@ always_ff @(posedge clk) begin
         frame_slot <= 0;
     end else begin
         state <= next_state;
+
+        // counter logic
+        if ((state == S_dump_read && read_area_a == 0) || (state == S_dump_w2)) begin
+            read_ptr <= read_ptr + 1'b1;
+        end
+        // reset
+        if (state == S_done) begin
+            read_ptr <= 1;
+        end
     end
 end
 
@@ -178,14 +193,23 @@ always_comb begin
             next_state = S_dump_read;
         end
         S_dump_head: begin
-
-
+            o_bram_en = 1'b1;
+            o_bram_we = 4'b1111;
+            o_bram_addr = current_bram_addr;
+            o_bram_wdata = {i_frame_count, valid_centroid_count};
+            next_state = S_done;
         end
         S_done: begin
-
+            o_bram_en = 1'b0;
+            o_bram_we = 4'b0;
+            next_state = S_accum;
+            o_dump_complete = 1'b1;
         end
         default: begin
-
+            next_state  = S_accum;
+            o_bram_we   = 4'b0000;
+            o_bram_en   = 1'b0;
+            o_dump_complete = 1'b0;
         end
     endcase
 end
