@@ -28,6 +28,11 @@ module label_decision_logic #(
         end
     end
 
+    // label assignment logic
+    logic valid_w;
+    // Ignore the West pixel if we are on the first column of a new row!
+    assign valid_w = (first_col) ? 1'b0 : (i_trans_label_w != 0);
+
     always_comb begin
         o_lut_we = 1'b0;
         o_lut_addrd = '0;
@@ -36,8 +41,7 @@ module label_decision_logic #(
         o_labeled_pixel = '0; 
         valid_label = i_pixel_data; // Let downstream know if this is a real object
 
-        // label assignment logic
-        casex ({i_pixel_data, i_trans_label_n != 0, i_trans_label_w != 0})
+        casex ({i_pixel_data, i_trans_label_n != 0, valid_w})
             3'b0XX: o_labeled_pixel = '0;
             3'b100: begin // incoming pixel is foreground, and nw pixels are background
                 o_labeled_pixel = new_label;
@@ -50,7 +54,7 @@ module label_decision_logic #(
         endcase 
 
         // collision condition
-        if ((i_trans_label_n != 0) && (i_trans_label_w != 0) && (i_trans_label_n != i_trans_label_w)) begin
+        if ((i_trans_label_n != 0) && (valid_w) && (i_trans_label_n != i_trans_label_w)) begin
             o_lut_we = 1'b1;
             o_lut_addrd = (i_trans_label_n > i_trans_label_w) ? i_trans_label_n : i_trans_label_w; // MAX
             o_lut_dind  = (i_trans_label_n < i_trans_label_w) ? i_trans_label_n : i_trans_label_w; // MIN

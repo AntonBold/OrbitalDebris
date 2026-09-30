@@ -33,8 +33,10 @@ typedef enum logic {
 
 state_t state, next_state;
 
-
 logic [23:0] frame_count;
+
+logic [$clog2(WIDTH)-1:0] row_counter;
+logic [$clog2(HEIGHT)-1:0] col_counter;
 
 always_ff @(posedge i_clk) begin
     if(i_rst)
@@ -102,8 +104,8 @@ end
 assign o_first_row = i_tuser | reg_is_first_row;
 assign o_first_col = i_tuser | reg_was_prev_pixel_last;
 
-logic [$clog2(WIDTH)-1:0] row_counter;
-logic [$clog2(HEIGHT)-1:0] col_counter;
+assign o_x_coord = row_counter;
+assign o_y_coord = col_counter;
 
 always_ff @(posedge i_clk) begin
     if (i_rst) begin
@@ -134,8 +136,5 @@ always_ff @(posedge i_clk) begin
         end
     end
 end
-
-assign o_x_coord = row_counter;
-assign o_y_coord = col_counter;
 
 endmodule

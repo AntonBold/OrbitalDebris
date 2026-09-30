@@ -11,7 +11,13 @@ module cca_top #(
     input logic         i_tuser,
     input logic         i_tlast,
     output logic        i_trdy,
-    output logic        o_interrupt
+    output logic        o_interrupt,
+
+    // AXI BRAM Interface
+    output logic [31:0] o_bram_addr,
+    output logic [31:0] o_bram_wdata,
+    output logic [3:0]  o_bram_we,
+    output logic        o_bram_en
 );
 
 localparam LABEL_SIZE = $clog2(NUM_LABELS);
@@ -28,7 +34,10 @@ logic [LABEL_SIZE-1:0] dec_fe_trans_label, dec_fe_trans_max, dec_fe_trans_min;
 logic [$clog2(ROW_SIZE)-1:0] control_fe_x_coord;
 logic [$clog2(COL_SIZE)-1:0] control_fe_y_coord;
 
-cca_control controller (
+cca_control #(
+    .WIDTH(ROW_SIZE),
+    .HEIGHT(COL_SIZE)
+) controller (
     .i_clk(i_clk),
     .i_rst(i_rst),
     .i_tuser(i_tuser),
@@ -82,9 +91,13 @@ feature_extract #(
     .i_trans_label(dec_fe_trans_label),
     .i_trans_min(dec_fe_trans_min),
     .i_trans_max(dec_fe_trans_max),
-    .o_dump_complete(fe_control_dump_complete)
+    .o_dump_complete(fe_control_dump_complete),
 
-    // BRAM signals can route up to the top level later
+    // BRAM Interface
+    .o_bram_addr(o_bram_addr),
+    .o_bram_wdata(o_bram_wdata),
+    .o_bram_we(o_bram_we),
+    .o_bram_en(o_bram_en)
 );
 
 endmodule

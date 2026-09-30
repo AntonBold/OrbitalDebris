@@ -22,7 +22,10 @@ module pattern_gen #(
     parameter COLL_Y_START = 800,
     parameter COLL_WIDTH = 15,
     parameter COLL_HEIGHT = 10,
-    parameter COLL_THICKNESS = 3
+    parameter COLL_THICKNESS = 3,
+    
+    // Multi-frame testing
+    parameter NUM_FRAMES = 1
 )(
     input  logic i_clk,
     input  logic i_rst,
@@ -36,12 +39,14 @@ module pattern_gen #(
 
     logic [$clog2(WIDTH)-1:0] x_cnt;
     logic [$clog2(HEIGHT)-1:0] y_cnt;
+    logic [7:0] frame_count;
     logic active_frame;
     
     always_ff @(posedge i_clk) begin
         if (i_rst) begin
             x_cnt <= '0;
             y_cnt <= '0;
+            frame_count <= '0;
             o_tvalid <= 1'b0;
             active_frame <= 1'b0;
         end else if (i_enable || active_frame) begin
@@ -53,8 +58,12 @@ module pattern_gen #(
                 x_cnt <= '0;
                 if (y_cnt == HEIGHT - 1) begin
                     y_cnt <= '0;
-                    active_frame <= 1'b0; // Stop after 1 frame
-                    o_tvalid <= 1'b0;
+                    if (frame_count == NUM_FRAMES - 1) begin
+                        active_frame <= 1'b0; // Stop after N frames
+                        o_tvalid <= 1'b0;
+                    end else begin
+                        frame_count <= frame_count + 1'b1;
+                    end
                 end else begin
                     y_cnt <= y_cnt + 1'b1;
                 end

@@ -27,13 +27,13 @@ module feature_extract #(
     output logic o_dump_complete
 );
 
-// feature tables (32 bits wide except for y)
-logic [31:0] area_ram [0:NUM_LABELS-1];
-logic [31:0] sum_x_ram [0:NUM_LABELS-1];
-logic [19:0] sum_y_ram [0:NUM_LABELS-1];
+// initialize RAMs for simulation by declaring initial values
+logic [31:0] area_ram [0:NUM_LABELS-1] = '{default: '0};
+logic [31:0] sum_x_ram [0:NUM_LABELS-1] = '{default: '0};
+logic [19:0] sum_y_ram [0:NUM_LABELS-1] = '{default: '0};
 
-// zeros table
-logic zeros_ram [0:NUM_LABELS-1];
+// zeros table defaults to 1 (unmerged)
+logic zeros_ram [0:NUM_LABELS-1] = '{default: 1'b1};
 
 logic [LABEL_SIZE-1:0] addra, addrb;
 logic we_a_ft, we_b_zt;
@@ -49,7 +49,7 @@ logic [31:0] bram_base_addr;
 logic [31:0] current_bram_addr;
 
 
-typedef enum logic[3:0] {
+typedef enum logic[2:0] {
     S_accum         = 3'd0,
     S_dump_addr     = 3'd1,
     S_dump_read     = 3'd2,
@@ -99,27 +99,26 @@ assign read_y_b     = sum_y_ram[addrb] & {20{zeros_ram[addrb]}};
 logic [31:0] new_area, new_x;
 logic [19:0] new_y;
 
-always_comb begin
-    new_area    = '0;
-    new_x       = '0;
-    new_y       = '0;
-    if (state != S_accum) begin
+    always_comb begin
         new_area    = '0;
         new_x       = '0;
         new_y       = '0;
+        if (state != S_accum) begin
+            new_area    = '0;
+            new_x       = '0;
+            new_y       = '0;
+        end
+        else if (i_valid_coll) begin
+            new_area    = read_area_a + read_area_b + 1'b1;
+            new_x       = read_x_a + read_x_b + i_x_coord;
+            new_y       = read_y_a + read_y_b + i_y_coord;
+        end
+        else if (i_valid_label) begin
+            new_area    = read_area_a + 1'b1;
+            new_x       = read_x_a + i_x_coord;
+            new_y       = read_y_a + i_y_coord;
+        end
     end
-    else if (i_valid_coll) begin
-        new_area    = read_area_a + read_area_b + 1'b1;
-        new_x       = read_x_a + read_x_b + i_x_coord;
-        new_y       = read_y_a + read_y_b + i_y_coord;
-    end
-    else begin
-        new_area    = read_area_a + 1'b1;
-        new_x       = read_x_a + i_x_coord;
-        new_y       = read_y_a + i_y_coord;
-
-    end
-end
 
 
 // writing
@@ -157,6 +156,7 @@ always_ff @(posedge i_clk) begin
         // reset
         if (state == S_done) begin
             read_ptr <= 1;
+            valid_centroid_count <= '0;
             if (frame_slot == 2'd2)
                 frame_slot <= '0;
             else
@@ -210,7 +210,8 @@ always_comb begin
             o_bram_en = 1'b1;
             o_bram_we = 4'b1111;
             o_bram_addr = current_bram_addr;
-            o_bram_wdata = {4'b0, read_y_a, read_area_a[6:0], 1'b1};
+            // Pack: 4 bits padding, 15 bits Y_sum, 12 bits Area, 1 bit Valid
+            o_bram_wdata = {4'b0, read_y_a[14:0], read_area_a[11:0], 1'b1};
             next_state = S_dump_addr;
             dump_clear_we = 1'b1;
         end
