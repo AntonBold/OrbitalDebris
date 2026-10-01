@@ -14,7 +14,8 @@
 # When using it as input clock to CMT primitives (MMCM/PLL), it needs to go through
 # BUFG first. Choose "Global Buffer" in Clocking Wizard IP customization.
 # Might need CLOCK_DEDICATED_ROUTE FALSE
-#set_property -dict { PACKAGE_PIN E12 IOSTANDARD LVCMOS18 } [get_ports { sysclk }];
+set_property -dict { PACKAGE_PIN E12 IOSTANDARD LVCMOS18 } [get_ports { sysclk }];
+create_clock -period 40.000 -name sysclk [get_ports sysclk]
 
 ## MIPI A Port
 #set_property -dict { PACKAGE_PIN B8 IOSTANDARD LVCMOS12 } [get_ports { mipi_a_pwup_ls }]; #IO_L22N_T3U_N7_DBC_AD0N_66 Sch=mipi_a_pwup_ls
@@ -131,7 +132,7 @@
 #set_property -dict { PACKAGE_PIN AB15  IOSTANDARD LVCMOS33 } [get_ports { sw[3] }]; #IO_L8P_HDGC_44/24 Sch=sw[3]
 
 ## LED
-#set_property -dict { PACKAGE_PIN L14   IOSTANDARD LVCMOS33 } [get_ports { ld[0] }]; #IO_L12P_AD0P_46/26 Sch=ld[1]
+set_property -dict { PACKAGE_PIN L14   IOSTANDARD LVCMOS33 } [get_ports { led0 }]; #IO_L12P_AD0P_46/26 Sch=ld[1]
 #set_property -dict { PACKAGE_PIN L13   IOSTANDARD LVCMOS33 } [get_ports { ld[1] }]; #IO_L12N_AD0N_46/26 Sch=ld[2]
 #set_property -dict { PACKAGE_PIN K14   IOSTANDARD LVCMOS33 } [get_ports { ld[2] }]; #IO_L11P_AD1P_46/26 Sch=ld[3]
 #set_property -dict { PACKAGE_PIN J14   IOSTANDARD LVCMOS33 } [get_ports { ld[3] }]; #IO_L11N_AD1N_46/26 Sch=ld[4]
