@@ -5,7 +5,7 @@ module cca_top #(
 )(
     input logic         i_clk,
     input logic         i_rst,
-
+    
     input logic [7:0]   i_tdata,
     input logic         i_tvalid,
     input logic         i_tuser,
