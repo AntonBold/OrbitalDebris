@@ -17,7 +17,8 @@ module cca_top #(
     output logic [31:0] o_bram_addr,
     output logic [31:0] o_bram_wdata,
     output logic [3:0]  o_bram_we,
-    output logic        o_bram_en
+    output logic        o_bram_en,
+    output logic        o_bram_clk
 );
 
 localparam LABEL_SIZE = $clog2(NUM_LABELS);
@@ -36,6 +37,7 @@ logic [$clog2(COL_SIZE)-1:0] control_fe_y_coord;
 
 
 assign o_trdy = (rst == 1'b1) ? 1'b0 : 1'b1;
+assign o_bram_clk = clk;
 
 cca_control #(
     .WIDTH(ROW_SIZE),

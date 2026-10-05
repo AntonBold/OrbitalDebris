@@ -45,8 +45,8 @@ logic we_a_ft, we_b_zt;
 logic [LABEL_SIZE:0] read_ptr;
 logic [7:0] valid_centroid_count;
 logic [1:0] frame_slot;
-logic [31:0] bram_base_addr;
-logic [31:0] current_bram_addr;
+logic [31:0] frame_base_addr;
+logic [31:0] word_offset;
 
 
 typedef enum logic[2:0] {
@@ -202,14 +202,14 @@ always_comb begin
         S_dump_w1: begin
             o_bram_en = 1'b1;
             o_bram_we = 4'b1111;
-            o_bram_addr = current_bram_addr;
+            o_bram_addr = frame_base_addr + word_offset;
             o_bram_wdata = read_x_a;
             next_state = S_dump_w2;
         end
         S_dump_w2: begin
             o_bram_en = 1'b1;
             o_bram_we = 4'b1111;
-            o_bram_addr = current_bram_addr;
+            o_bram_addr = frame_base_addr + word_offset;
             // Pack: 4 bits padding, 15 bits Y_sum, 12 bits Area, 1 bit Valid
             o_bram_wdata = {4'b0, read_y_a[14:0], read_area_a[11:0], 1'b1};
             next_state = S_dump_addr;
@@ -218,7 +218,7 @@ always_comb begin
         S_dump_head: begin
             o_bram_en = 1'b1;
             o_bram_we = 4'b1111;
-            o_bram_addr = bram_base_addr;
+            o_bram_addr = frame_base_addr;
             o_bram_wdata = {i_frame_count, valid_centroid_count};
             next_state = S_done;
         end
@@ -242,19 +242,18 @@ end
 
 always_comb begin
     case (frame_slot)
-        2'd0: bram_base_addr = 32'hA000_0000;
-        2'd1: bram_base_addr = 32'hA000_0804;
-        2'd2: bram_base_addr = 32'hA000_1008;
-        default: bram_base_addr = 32'hA000_0000;
+        2'd0: frame_base_addr = 32'h0000_0000;
+        2'd1: frame_base_addr = 32'h0000_0804;
+        2'd2: frame_base_addr = 32'h0000_1008;
+        default: frame_base_addr = 32'h0000_0000;
     endcase
 end
 
 always_ff @(posedge i_clk) begin
     if(state == S_accum) begin
-        // reset pointer
-        current_bram_addr <= bram_base_addr + 32'd4;
+        word_offset <= 32'd4;
     end else if (state == S_dump_w1 || state == S_dump_w2) begin
-        current_bram_addr <= current_bram_addr + 32'd4;
+        word_offset <= word_offset + 32'd4;
     end
 end
 
