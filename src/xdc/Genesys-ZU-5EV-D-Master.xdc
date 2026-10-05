@@ -126,7 +126,7 @@ create_clock -period 40.000 -name sysclk [get_ports sysclk]
 #set_property -dict { PACKAGE_PIN A12  IOSTANDARD LVCMOS18 } [get_ports { btn[6] }]; #IO_L11P_AD9P_45/25 Sch=btn[6]
 
 ## Switches
-#set_property -dict { PACKAGE_PIN AB14  IOSTANDARD LVCMOS33 } [get_ports { sw[0] }]; #IO_L8N_HDGC_44/24 Sch=sw[0]
+set_property -dict { PACKAGE_PIN AB14  IOSTANDARD LVCMOS33 } [get_ports { sw0 }]; #IO_L8N_HDGC_44/24 Sch=sw[0]
 #set_property -dict { PACKAGE_PIN Y13   IOSTANDARD LVCMOS33 } [get_ports { sw[1] }]; #IO_L10N_AD10N_44/24 Sch=sw[1]
 #set_property -dict { PACKAGE_PIN W12   IOSTANDARD LVCMOS33 } [get_ports { sw[2] }]; #IO_L11P_AD9P_44/24 Sch=sw[2]
 #set_property -dict { PACKAGE_PIN AB15  IOSTANDARD LVCMOS33 } [get_ports { sw[3] }]; #IO_L8P_HDGC_44/24 Sch=sw[3]
