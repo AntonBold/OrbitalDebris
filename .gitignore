@@ -6,6 +6,7 @@ vivado/*.hw
 vivado/*.ip_user_files
 vivado/*.gen
 vivado/.Xil
+*.debug
 
 # Vitis generated artifacts
 vitis/**/.metadata

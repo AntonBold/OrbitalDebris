@@ -43,7 +43,6 @@ always_ff @(posedge i_clk) begin
     begin
         reg_was_prev_pixel_last <= 1'b0;
         frame_count <= '0;
-        o_frame_done <= 1'b0;
     end
     else if (i_tvalid) begin
         reg_was_prev_pixel_last <= i_tlast;
