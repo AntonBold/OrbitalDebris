@@ -6,7 +6,8 @@
       "name": "hdmi_rx",
       "rev_ctrl_bd_flag": "RevCtrlBdOff",
       "synth_flow_mode": "Hierarchical",
-      "tool_version": "2025.2"
+      "tool_version": "2025.2",
+      "validated": "true"
     },
     "design_tree": {
       "v_hdmi_rx_ss_0": "",
@@ -15,7 +16,9 @@
       "axi_smc": "",
       "rst_ps8_0_100M": "",
       "axis_register_slice_0": "",
-      "ila_0": ""
+      "ila_0": "",
+      "ilconstant_0": "",
+      "ilconstant_1": ""
     },
     "interface_ports": {
       "DDC_OUT_0": {
@@ -59,11 +62,55 @@
     "ports": {
       "rx_tmds_clk_p_0": {
         "type": "clk",
-        "direction": "O"
+        "direction": "O",
+        "parameters": {
+          "CLK_DOMAIN": {
+            "value": "hdmi_rx_vid_phy_controller_0_0_rx_tmds_clk_p",
+            "value_src": "default_prop"
+          },
+          "FREQ_HZ": {
+            "value": "100000000",
+            "value_src": "default"
+          },
+          "FREQ_TOLERANCE_HZ": {
+            "value": "0",
+            "value_src": "default"
+          },
+          "INSERT_VIP": {
+            "value": "0",
+            "value_src": "default"
+          },
+          "PHASE": {
+            "value": "0.0",
+            "value_src": "default"
+          }
+        }
       },
       "rx_tmds_clk_n_0": {
         "type": "clk",
-        "direction": "O"
+        "direction": "O",
+        "parameters": {
+          "CLK_DOMAIN": {
+            "value": "hdmi_rx_vid_phy_controller_0_0_rx_tmds_clk_n",
+            "value_src": "default_prop"
+          },
+          "FREQ_HZ": {
+            "value": "100000000",
+            "value_src": "default"
+          },
+          "FREQ_TOLERANCE_HZ": {
+            "value": "0",
+            "value_src": "default"
+          },
+          "INSERT_VIP": {
+            "value": "0",
+            "value_src": "default"
+          },
+          "PHASE": {
+            "value": "0.0",
+            "value_src": "default"
+          }
+        }
       },
       "phy_rxn_in_0": {
         "direction": "I",
@@ -77,19 +124,107 @@
       },
       "mgtrefclk1_pad_n_in_0": {
         "type": "clk",
-        "direction": "I"
+        "direction": "I",
+        "parameters": {
+          "CLK_DOMAIN": {
+            "value": "hdmi_rx_mgtrefclk1_pad_n_in_0",
+            "value_src": "default"
+          },
+          "FREQ_HZ": {
+            "value": "100000000",
+            "value_src": "default"
+          },
+          "FREQ_TOLERANCE_HZ": {
+            "value": "0",
+            "value_src": "default"
+          },
+          "INSERT_VIP": {
+            "value": "0",
+            "value_src": "default"
+          },
+          "PHASE": {
+            "value": "0.0",
+            "value_src": "default"
+          }
+        }
       },
       "mgtrefclk1_pad_p_in_0": {
         "type": "clk",
-        "direction": "I"
+        "direction": "I",
+        "parameters": {
+          "CLK_DOMAIN": {
+            "value": "hdmi_rx_mgtrefclk1_pad_p_in_0",
+            "value_src": "default"
+          },
+          "FREQ_HZ": {
+            "value": "100000000",
+            "value_src": "default"
+          },
+          "FREQ_TOLERANCE_HZ": {
+            "value": "0",
+            "value_src": "default"
+          },
+          "INSERT_VIP": {
+            "value": "0",
+            "value_src": "default"
+          },
+          "PHASE": {
+            "value": "0.0",
+            "value_src": "default"
+          }
+        }
       },
       "mgtrefclk0_pad_n_in_0": {
         "type": "clk",
-        "direction": "I"
+        "direction": "I",
+        "parameters": {
+          "CLK_DOMAIN": {
+            "value": "hdmi_rx_mgtrefclk0_pad_n_in_0",
+            "value_src": "default"
+          },
+          "FREQ_HZ": {
+            "value": "100000000",
+            "value_src": "default"
+          },
+          "FREQ_TOLERANCE_HZ": {
+            "value": "0",
+            "value_src": "default"
+          },
+          "INSERT_VIP": {
+            "value": "0",
+            "value_src": "default"
+          },
+          "PHASE": {
+            "value": "0.0",
+            "value_src": "default"
+          }
+        }
       },
       "mgtrefclk0_pad_p_in_0": {
         "type": "clk",
-        "direction": "I"
+        "direction": "I",
+        "parameters": {
+          "CLK_DOMAIN": {
+            "value": "hdmi_rx_mgtrefclk0_pad_p_in_0",
+            "value_src": "default"
+          },
+          "FREQ_HZ": {
+            "value": "100000000",
+            "value_src": "default"
+          },
+          "FREQ_TOLERANCE_HZ": {
+            "value": "0",
+            "value_src": "default"
+          },
+          "INSERT_VIP": {
+            "value": "0",
+            "value_src": "default"
+          },
+          "PHASE": {
+            "value": "0.0",
+            "value_src": "default"
+          }
+        }
       },
       "cable_detect_0": {
         "direction": "I"
@@ -199,7 +334,7 @@
                   "width": "16",
                   "usage": "register",
                   "bank_blocks": {
-                    "reg0;reg0;xilinx.com:ip:v_hdmi_rx:3.0;v_hdmi_rx;CPU_IN;NONE;NONE": {
+                    "reg0;/v_hdmi_rx/CPU_IN/reg0;xilinx.com:ip:v_hdmi_rx:3.0;/v_hdmi_rx;CPU_IN;NONE;NONE": {
                       "base_address": "0x0000",
                       "range": "64K",
                       "width": "16",
@@ -220,6 +355,9 @@
         "inst_hier_path": "vid_phy_controller_0",
         "has_run_ip_tcl": "true",
         "parameters": {
+          "C_INPUT_PIXELS_PER_CLOCK": {
+            "value": "2"
+          },
           "C_Rx_Protocol": {
             "value": "HDMI"
           },
@@ -1354,7 +1492,7 @@
             "value": "IOPLL"
           },
           "PSU__CRF_APB__SATA_REF_CTRL__ACT_FREQMHZ": {
-            "value": "250.000000"
+            "value": "250"
           },
           "PSU__CRF_APB__TOPSW_LSBUS_CTRL__ACT_FREQMHZ": {
             "value": "100.000000"
@@ -2656,6 +2794,14 @@
             "mode": "Slave",
             "vlnv_bus_definition": "xilinx.com:interface:aximm:1.0",
             "vlnv": "xilinx.com:interface:aximm_rtl:1.0",
+            "parameters": {
+              "NUM_READ_OUTSTANDING": {
+                "value": "8"
+              },
+              "NUM_WRITE_OUTSTANDING": {
+                "value": "8"
+              }
+            },
             "bridges": [
               "M00_AXI",
               "M01_AXI"
@@ -2675,6 +2821,26 @@
             "mode": "Master",
             "vlnv_bus_definition": "xilinx.com:interface:aximm:1.0",
             "vlnv": "xilinx.com:interface:aximm_rtl:1.0",
+            "parameters": {
+              "NUM_READ_OUTSTANDING": {
+                "value": "8"
+              },
+              "NUM_READ_THREADS": {
+                "value": "1"
+              },
+              "NUM_WRITE_OUTSTANDING": {
+                "value": "8"
+              },
+              "NUM_WRITE_THREADS": {
+                "value": "1"
+              },
+              "RUSER_BITS_PER_BYTE": {
+                "value": "0"
+              },
+              "WUSER_BITS_PER_BYTE": {
+                "value": "0"
+              }
+            },
             "bd_attributes": {
               "TYPE": {
                 "value": "interior",
@@ -2686,6 +2852,26 @@
             "mode": "Master",
             "vlnv_bus_definition": "xilinx.com:interface:aximm:1.0",
             "vlnv": "xilinx.com:interface:aximm_rtl:1.0",
+            "parameters": {
+              "NUM_READ_OUTSTANDING": {
+                "value": "8"
+              },
+              "NUM_READ_THREADS": {
+                "value": "1"
+              },
+              "NUM_WRITE_OUTSTANDING": {
+                "value": "8"
+              },
+              "NUM_WRITE_THREADS": {
+                "value": "1"
+              },
+              "RUSER_BITS_PER_BYTE": {
+                "value": "0"
+              },
+              "WUSER_BITS_PER_BYTE": {
+                "value": "0"
+              }
+            },
             "bd_attributes": {
               "TYPE": {
                 "value": "interior",
@@ -2722,6 +2908,9 @@
           },
           "HAS_TSTRB": {
             "value": "0"
+          },
+          "TDATA_NUM_BYTES": {
+            "value": "48"
           }
         },
         "interface_ports": {
@@ -2763,8 +2952,22 @@
           "C_MONITOR_TYPE": {
             "value": "AXI"
           },
+          "C_SLOT_0_AXIS_TDATA_WIDTH": {
+            "value": "64"
+          },
           "C_SLOT_0_AXI_PROTOCOL": {
             "value": "AXI4S"
+          }
+        }
+      },
+      "ilconstant_0": {
+        "vlnv": "xilinx.com:inline_hdl:ilconstant:1.0"
+      },
+      "ilconstant_1": {
+        "vlnv": "xilinx.com:inline_hdl:ilconstant:1.0",
+        "parameters": {
+          "CONST_VAL": {
+            "value": "0"
           }
         }
       }
@@ -2836,6 +3039,18 @@
         "ports": [
           "cable_detect_0",
           "v_hdmi_rx_ss_0/cable_detect"
+        ]
+      },
+      "ilconstant_0_dout": {
+        "ports": [
+          "ilconstant_0/dout",
+          "axis_register_slice_0/m_axis_tready"
+        ]
+      },
+      "ilconstant_1_dout": {
+        "ports": [
+          "ilconstant_1/dout",
+          "v_hdmi_rx_ss_0/s_axis_audio_aclk"
         ]
       },
       "mgtrefclk0_pad_n_in_0_1": {
@@ -2923,7 +3138,8 @@
           "vid_phy_controller_0/vid_phy_axi4lite_aclk",
           "vid_phy_controller_0/vid_phy_sb_aclk",
           "zynq_ultra_ps_e_0/maxihpm0_lpd_aclk",
-          "zynq_ultra_ps_e_0/saxihp0_fpd_aclk"
+          "zynq_ultra_ps_e_0/saxihp0_fpd_aclk",
+          "vid_phy_controller_0/vid_phy_tx_axi4s_aclk"
         ]
       },
       "zynq_ultra_ps_e_0_pl_clk2": {
