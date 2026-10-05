@@ -44,14 +44,7 @@ set_property ip_output_repo  $build_dir/$proj_name/ip_cache [current_project]
 # ---- RTL --------------------------------------------------------------------
 # top.sv must exist before the BD sections below -- Add Module in each BD
 # resolves against modules already present in sources_1.
-set rtl_files [list \
-    $repo_root/src/hdl/top.sv \
-    $repo_root/src/hdl/ccl_decision.sv \
-    $repo_root/src/hdl/comb_mux.sv \
-    $repo_root/src/hdl/fifo.sv \
-    $repo_root/src/hdl/label_decision_logic.sv \
-    $repo_root/src/hdl/translator_lut.sv \
-]
+set rtl_files [lsort [glob -nocomplain -directory $repo_root/src/hdl *.sv]
 add_files -norecurse -fileset sources_1 $rtl_files
 set_property file_type SystemVerilog [get_files *.sv]
 
