@@ -23,6 +23,8 @@ vitis/**/RemoteSystemsTempFiles
 # Vivado build output
 /build/
 
+/vitis_build/
+
 .Xil/
 
 # Vivado BD outputs

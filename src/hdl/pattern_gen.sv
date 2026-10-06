@@ -31,10 +31,11 @@ module pattern_gen #(
     input  logic i_rst,
     input  logic i_enable, // Start streaming
     
-    output logic [7:0] o_tdata,
-    output logic       o_tvalid,
-    output logic       o_tuser,
-    output logic       o_tlast
+    // AXI4-Stream Video Out (Auto-inferred by Vivado)
+     output logic [7:0] m_axis_tdata,
+     output logic       m_axis_tvalid,
+     output logic       m_axis_tuser,
+     output logic       m_axis_tlast
 );
 
     logic [$clog2(WIDTH)-1:0] x_cnt;
@@ -47,11 +48,11 @@ module pattern_gen #(
             x_cnt <= '0;
             y_cnt <= '0;
             frame_count <= '0;
-            o_tvalid <= 1'b0;
+            m_axis_tvalid <= 1'b0;
             active_frame <= 1'b0;
         end else if (i_enable || active_frame) begin
             active_frame <= 1'b1;
-            o_tvalid <= 1'b1; // We can add random stalls later if desired
+            m_axis_tvalid <= 1'b1; // We can add random stalls later if desired
             
             // Increment logic
             if (x_cnt == WIDTH - 1) begin
@@ -60,7 +61,7 @@ module pattern_gen #(
                     y_cnt <= '0;
                     if (frame_count == NUM_FRAMES - 1) begin
                         active_frame <= 1'b0; // Stop after N frames
-                        o_tvalid <= 1'b0;
+                        m_axis_tvalid <= 1'b0;
                     end else begin
                         frame_count <= frame_count + 1'b1;
                     end
@@ -71,13 +72,13 @@ module pattern_gen #(
                 x_cnt <= x_cnt + 1'b1;
             end
         end else begin
-            o_tvalid <= 1'b0;
+            m_axis_tvalid <= 1'b0;
         end
     end
     
     // AXI-Stream Control Signals
-    assign o_tuser = (x_cnt == 0 && y_cnt == 0 && o_tvalid);
-    assign o_tlast = (x_cnt == WIDTH - 1 && o_tvalid);
+    assign m_axis_tuser = (x_cnt == 0 && y_cnt == 0 && m_axis_tvalid);
+    assign m_axis_tlast = (x_cnt == WIDTH - 1 && m_axis_tvalid);
     
     // Object Generation Logic
     logic is_obj1, is_obj2, is_coll;
@@ -107,6 +108,6 @@ module pattern_gen #(
     assign is_coll = COLL_ENABLE && (coll_left_leg || coll_right_leg || coll_bridge);
     
     // Output pixel data (1-bit binarized stream on bit 0)
-    assign o_tdata = {7'b0, (is_obj1 | is_obj2 | is_coll)};
+    assign m_axis_tdata = {7'b0, (is_obj1 | is_obj2 | is_coll)};
 
 endmodule
