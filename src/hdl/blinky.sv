@@ -10,6 +10,7 @@ module blinky(
     logic [$clog2(SLOW_COUNT):0] counter;
     logic [$clog2(SLOW_COUNT):0] max_count;
     logic [1:0] sw0_pipe;
+    logic sw0_dffd;
     
     
     assign sw0_dffd = sw0_pipe[1];
@@ -18,6 +19,7 @@ module blinky(
     initial begin
         led0 = 1'b0;
         sw0_pipe = 2'b0;
+        counter = '0;
     end
     
 

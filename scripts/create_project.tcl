@@ -49,10 +49,10 @@ add_files -norecurse -fileset sources_1 $rtl_files
 set_property file_type SystemVerilog [get_files *.sv]
 
 # ---- constraints ------------------------------------------------------------
-# add_files -norecurse -fileset constrs_1 [list \
-#     $repo_root/src/constraints/pins.xdc \
-#     $repo_root/src/constraints/timing.xdc \
-# ]
+add_files -norecurse -fileset constrs_1 [list \
+    $repo_root/src/xdc/Genesys-ZU-5EV-D-Master.xdc 
+    # $repo_root/src/constraints/timing.xdc \
+]
 
 # ---- block designs ------------------------------------------------------
 # Each BD is created and lives permanently at src/bd/<name>/<name>.bd --

@@ -53,9 +53,6 @@ always_ff @(posedge i_clk) begin
                 frame_count <= frame_count + 1'b1;
             end
         end
-        
-        // Very simple V-blank detection: tlast goes high in S_notfirstrow.
-        // (You might want to tie this to a specific row counter later if your tlast is per-line!)
     end
 end
 

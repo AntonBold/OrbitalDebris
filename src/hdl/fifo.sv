@@ -31,7 +31,7 @@ module fifo  #(
             rd_ptr <= '0;
         end
         else begin
-            // We must allow SIMULTANEOUS read and write if both are asserted!
+            // allow simultaneous read and write if both are asserted
             if (i_data_valid && !o_full) begin
                 if (wr_ptr[ADDR_WIDTH-1:0] + 1 == DEPTH) begin
                     wr_ptr[ADDR_WIDTH-1:0] <= 0;
@@ -48,7 +48,6 @@ module fifo  #(
                 end else begin
                     rd_ptr <= rd_ptr + 1'b1;
                 end
-                // Move o_data assignment outside the pointer logic for clean inference
                 o_data <= buffer[rd_ptr[ADDR_WIDTH-1:0]];
             end
         end

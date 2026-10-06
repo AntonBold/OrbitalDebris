@@ -26,7 +26,7 @@ module ccl_decision #(
     logic fifo_full;
     logic fifo_empty;
 
-    // missing internal wiring signals
+    // internal wiring signals
     logic lut_we;
     logic [LABEL_SIZE-1:0] lut_addrd;
     logic [LABEL_SIZE-1:0] lut_dind;
@@ -35,10 +35,10 @@ module ccl_decision #(
     logic [LABEL_SIZE-1:0] doe, dof, dog;
     logic [LABEL_SIZE-1:0] next_label;
     logic valid_label;
-    logic valid_pixel; // Added missing valid_pixel for FIFO
+    logic valid_pixel; 
 
     assign valid_pixel = i_valid_pixel;
-    assign read_en = valid_pixel && !i_first_row; // THE MISSING LINK!
+    assign read_en = valid_pixel && !i_first_row;
 
     // internal regs
     logic reg_input_pixel;

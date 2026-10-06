@@ -8,13 +8,13 @@ module pattern_gen #(
     parameter OBJ1_ENABLE = 1,
     parameter OBJ1_X_START = 100,
     parameter OBJ1_Y_START = 100,
-    parameter OBJ1_SIZE = 10,
+    parameter OBJ1_SIZE = 5,
     
     // Object 2 Parameters (Square)
     parameter OBJ2_ENABLE = 1,
     parameter OBJ2_X_START = 500,
     parameter OBJ2_Y_START = 500,
-    parameter OBJ2_SIZE = 20,
+    parameter OBJ2_SIZE = 5,
     
     // Collision Object Parameters (U-shape or reverse L)
     parameter COLL_ENABLE = 1,
@@ -31,7 +31,7 @@ module pattern_gen #(
     input  logic i_rst,
     input  logic i_enable, // Start streaming
     
-    // AXI4-Stream Video Out (Auto-inferred by Vivado)
+    // AXI4-Stream Video Out (inferred by vivado)
      output logic [7:0] m_axis_tdata,
      output logic       m_axis_tvalid,
      output logic       m_axis_tuser,
