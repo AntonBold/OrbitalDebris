@@ -26,21 +26,15 @@ OrbitalDebris/
 │       └── genesys-zu-5ev/   # Board files — no separate installation needed
 ├── src/
 │   ├── hdl/          # Synthesizable Verilog source files
-│   ├── ip/           # IP core descriptors (.xci files only)
 │   ├── xdc/          # Constraint files (timing, pin assignments)
-│   └── bd/           # Block designs
-├── sim/
+│   ├── bd/           # Block designs
 │   ├── tb/           # Testbenches
-│   └── scripts/      # Simulation Tcl scripts
-├── vitis/
-│   ├── src/
-│   │   ├── app/      # Application C/C++ source
-│   │   ├── drivers/  # Custom drivers
-│   │   └── bsp/      # Board support package config
-│   └── scripts/      # Vitis workspace Tcl scripts
+│   ├── sim/          # Scripts to run testbenches in ModelSim
+│   └── sw/           # Software for ARM Processor
+│       ├── include/  # Include files for software
+
+├── scripts/          # Important scripts (i.e. create_project.tcl)
 ├── docs/             # Specs, diagrams, reference material
-├── vivado/           # Vivado project (.xpr tracked, build output ignored)
-├── create_project.tcl
 └── README.md
 ```
 
@@ -62,8 +56,6 @@ cd OrbitalDebris
 ```
 
 ### Recreate the Vivado project
-
-**Not ready yet**
 
 From the root of the repo:
 ```bash
