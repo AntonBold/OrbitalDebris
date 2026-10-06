@@ -8,8 +8,8 @@ module fifo  #(
     input logic i_rd_data,
     input logic [DATA_WIDTH-1:0] i_data,
     output logic [DATA_WIDTH-1:0] o_data,
-    output logic full,
-    output logic empty
+    output logic o_full,
+    output logic o_empty
 );
 
     localparam ADDR_WIDTH = $clog2(DEPTH);
@@ -30,28 +30,30 @@ module fifo  #(
             wr_ptr <= '0;
             rd_ptr <= '0;
         end
-        else if (i_data_valid && !full) begin
-            if (wr_ptr[ADDR_WIDTH-1:0] + 1 == DEPTH) begin
-                wr_ptr[ADDR_WIDTH-1:0] <= 0;
-                wr_ptr[ADDR_WIDTH] <= ~wr_ptr[ADDR_WIDTH];
-            end else begin
-                wr_ptr <= wr_ptr + 1'b1;
+        else begin
+            // allow simultaneous read and write if both are asserted
+            if (i_data_valid && !o_full) begin
+                if (wr_ptr[ADDR_WIDTH-1:0] + 1 == DEPTH) begin
+                    wr_ptr[ADDR_WIDTH-1:0] <= 0;
+                    wr_ptr[ADDR_WIDTH] <= ~wr_ptr[ADDR_WIDTH];
+                end else begin
+                    wr_ptr <= wr_ptr + 1'b1;
+                end
+                buffer[wr_ptr[ADDR_WIDTH-1:0]] <= i_data;
             end
-            buffer[wr_ptr[ADDR_WIDTH-1:0]] <= i_data;
-        end
-        else if (i_rd_data && !empty) begin
-            if (rd_ptr[ADDR_WIDTH-1:0] + 1 == DEPTH) begin
-                rd_ptr[ADDR_WIDTH-1:0] <= '0;
-                rd_ptr[ADDR_WIDTH] <= ~rd_ptr[ADDR_WIDTH];
-                o_data <= buffer[rd_ptr[ADDR_WIDTH-1:0]];
-            end else begin
-                rd_ptr <= rd_ptr + 1'b1;
+            if (i_rd_data && !o_empty) begin
+                if (rd_ptr[ADDR_WIDTH-1:0] + 1 == DEPTH) begin
+                    rd_ptr[ADDR_WIDTH-1:0] <= '0;
+                    rd_ptr[ADDR_WIDTH] <= ~rd_ptr[ADDR_WIDTH];
+                end else begin
+                    rd_ptr <= rd_ptr + 1'b1;
+                end
                 o_data <= buffer[rd_ptr[ADDR_WIDTH-1:0]];
             end
         end
     end
 
-    assign full = (wr_ptr[ADDR_WIDTH] != rd_ptr[ADDR_WIDTH]) &&
+    assign o_full = (wr_ptr[ADDR_WIDTH] != rd_ptr[ADDR_WIDTH]) &&
                   (wr_ptr[ADDR_WIDTH-1:0] == rd_ptr[ADDR_WIDTH-1:0]);
-    assign empty = (wr_ptr == rd_ptr);
+    assign o_empty = (wr_ptr == rd_ptr);
 endmodule

@@ -6,6 +6,7 @@ vivado/*.hw
 vivado/*.ip_user_files
 vivado/*.gen
 vivado/.Xil
+*.debug
 
 # Vitis generated artifacts
 vitis/**/.metadata
@@ -21,6 +22,8 @@ vitis/**/RemoteSystemsTempFiles
 
 # Vivado build output
 /build/
+
+/vitis_build/
 
 .Xil/
 
@@ -79,3 +82,10 @@ vitis/.rigel_lopper
 sim/build/
 obj_dir/
 *.vcd
+
+# Modelsim artifacts
+
+work/
+modelsim.ini
+transcript
+vsim.wlf
