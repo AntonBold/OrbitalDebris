@@ -1045,7 +1045,7 @@
             "value": "532.500000"
           },
           "PSU__CRF_APB__DDR_CTRL__FREQMHZ": {
-            "value": "1066"
+            "value": "1065"
           },
           "PSU__CRF_APB__DDR_CTRL__SRCSEL": {
             "value": "DPLL"
@@ -1495,7 +1495,7 @@
             "value": "0"
           },
           "PSU__DDRC__BG_ADDR_COUNT": {
-            "value": "2"
+            "value": "1"
           },
           "PSU__DDRC__BRC_MAPPING": {
             "value": "ROW_BANK_COL"
@@ -1534,13 +1534,13 @@
             "value": "Normal (0-85)"
           },
           "PSU__DDRC__DEVICE_CAPACITY": {
-            "value": "4096 MBits"
+            "value": "8192 MBits"
           },
           "PSU__DDRC__DM_DBI": {
             "value": "DM_NO_DBI"
           },
           "PSU__DDRC__DRAM_WIDTH": {
-            "value": "8 Bits"
+            "value": "16 Bits"
           },
           "PSU__DDRC__ECC": {
             "value": "Disabled"
@@ -1594,7 +1594,7 @@
             "value": "0"
           },
           "PSU__DDRC__ROW_ADDR_COUNT": {
-            "value": "15"
+            "value": "16"
           },
           "PSU__DDRC__SELF_REF_ABORT": {
             "value": "0"
@@ -1639,7 +1639,7 @@
             "value": "1"
           },
           "PSU__DDR__INTERFACE__FREQMHZ": {
-            "value": "533.000"
+            "value": "532.500"
           },
           "PSU__DISPLAYPORT__LANE0__ENABLE": {
             "value": "1"
