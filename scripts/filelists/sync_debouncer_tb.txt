@@ -1,0 +1,12 @@
+# Testbench: sync_debouncer_tb (debouncer alone + button -> pattern_gen -> cca_top)
+# Paths are relative to the repo root. One file per line; # starts a comment.
+src/tb/sync_debouncer_tb.sv
+src/hdl/sync_debouncer.v
+src/hdl/pattern_gen.sv
+src/hdl/cca_top.sv
+src/hdl/cca_control.sv
+src/hdl/ccl_decision.sv
+src/hdl/fifo.sv
+src/hdl/label_decision_logic.sv
+src/hdl/translator_lut.sv
+src/hdl/feature_extract.sv
