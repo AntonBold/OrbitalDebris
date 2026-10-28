@@ -1,0 +1,4 @@
+# Testbench: cca_control_tb
+# Paths are relative to the repo root. One file per line; # starts a comment.
+src/tb/cca_control_tb.sv
+src/hdl/cca_control.sv

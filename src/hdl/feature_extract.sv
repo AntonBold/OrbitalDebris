@@ -16,7 +16,7 @@ module feature_extract #(
 
     // control signal from CCA control
     input logic i_frame_done,
-    input logic [23:0] i_frame_count,
+    input logic [22:0] i_frame_count,
 
     // AXI Bram interface (PS side)
     output logic [31:0] o_bram_addr,
@@ -43,7 +43,7 @@ logic we_a_ft, we_b_zt;
 // state machine signals
 
 logic [LABEL_SIZE:0] read_ptr;
-logic [7:0] valid_centroid_count;
+logic [8:0] valid_centroid_count;
 logic [1:0] frame_slot;
 logic [31:0] frame_base_addr;
 logic [31:0] word_offset;
@@ -173,10 +173,12 @@ always_comb begin
     next_state  = state;
     o_bram_we   = 4'b0000;
     o_bram_en   = 1'b0;
+    o_bram_addr = '0;
+    o_bram_wdata = '0;
     o_dump_complete = 1'b0;
     dump_clear_we = 1'b0;
 
-    case(state) 
+    case(state)
         S_accum: begin
             if (i_frame_done) begin
                 next_state = S_dump_addr;
@@ -210,8 +212,9 @@ always_comb begin
             o_bram_en = 1'b1;
             o_bram_we = 4'b1111;
             o_bram_addr = frame_base_addr + word_offset;
-            // Pack: 4 bits padding, 15 bits Y_sum, 12 bits Area, 1 bit Valid
-            o_bram_wdata = {4'b0, read_y_a[14:0], read_area_a[11:0], 1'b1};
+            // Pack: 22 bits Y_sum [31:10], 9 bits Area [9:1], 1 bit Valid [0]
+            // sum_y_ram is 20 bits (511 px * 1079 max row fits), so zero-extend
+            o_bram_wdata = {2'b0, read_y_a, read_area_a[8:0], 1'b1};
             next_state = S_dump_addr;
             dump_clear_we = 1'b1;
         end

@@ -3,6 +3,7 @@ module label_decision_logic #(
 )(
     input logic i_clk,
     input logic i_rst,
+    input logic i_frame_done,
     input logic i_pixel_data,
     input logic first_row,
     input logic first_col,
@@ -21,7 +22,10 @@ module label_decision_logic #(
     logic inc_new_label;
 
     always_ff @(posedge i_clk) begin
-        if (i_rst) begin
+        // Restart labels each frame: the TL and feature tables are cleared
+        // per frame, and a free-running counter would eventually wrap to 0
+        // (the background label).
+        if (i_rst || i_frame_done) begin
             new_label <=1;
         end else if (inc_new_label) begin
             new_label <= new_label+1'b1;

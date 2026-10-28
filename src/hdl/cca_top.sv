@@ -27,13 +27,15 @@ localparam LABEL_SIZE = $clog2(NUM_LABELS);
 
 logic control_ccl_first_row, control_ccl_first_col;
 logic control_fe_frame_done;
-logic [23:0] control_fe_frame_count;
+logic [22:0] control_fe_frame_count;
 logic fe_control_dump_complete;
 logic dec_fe_valid_coll, dec_fe_valid_label;
 logic [LABEL_SIZE-1:0] dec_fe_trans_label, dec_fe_trans_max, dec_fe_trans_min;
 
 logic [$clog2(ROW_SIZE)-1:0] control_fe_x_coord;
 logic [$clog2(COL_SIZE)-1:0] control_fe_y_coord;
+logic [$clog2(ROW_SIZE)-1:0] dec_fe_x_coord;
+logic [$clog2(COL_SIZE)-1:0] dec_fe_y_coord;
 
 
 assign o_trdy = (rst == 1'b1) ? 1'b0 : 1'b1;
@@ -70,6 +72,10 @@ ccl_decision  #(
     .i_first_row(control_ccl_first_row),
     .i_first_col(control_ccl_first_col),
     .i_frame_done(control_fe_frame_done),
+    .i_x_coord(control_fe_x_coord),
+    .i_y_coord(control_fe_y_coord),
+    .o_x_coord(dec_fe_x_coord),
+    .o_y_coord(dec_fe_y_coord),
     .o_valid_label(dec_fe_valid_label),
     .o_valid_coll(dec_fe_valid_coll),
     .o_trans_label(dec_fe_trans_label),
@@ -85,8 +91,8 @@ feature_extract #(
     .i_clk(clk),
     .i_rst(rst),
     
-    .i_x_coord(control_fe_x_coord),
-    .i_y_coord(control_fe_y_coord),
+    .i_x_coord(dec_fe_x_coord),
+    .i_y_coord(dec_fe_y_coord),
 
     .i_frame_done(control_fe_frame_done),
     .i_frame_count(control_fe_frame_count),

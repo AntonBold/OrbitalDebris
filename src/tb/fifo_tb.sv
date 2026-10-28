@@ -32,8 +32,8 @@ module fifo_tb();
         .i_rd_data(read_en),
         .i_data(data),
         .o_data(out_data),
-        .full(full),
-        .empty(empty)
+        .o_full(full),
+        .o_empty(empty)
     );
 
     // clk gen

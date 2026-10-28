@@ -25,7 +25,13 @@ module pattern_gen #(
     parameter COLL_THICKNESS = 3,
     
     // Multi-frame testing
-    parameter NUM_FRAMES = 1
+    parameter NUM_FRAMES = 1,
+
+    // Vertical blanking between frames, in lines of WIDTH idle cycles
+    // (tvalid low). 1080p60 has 45 blanking lines. Centroiding needs an idle
+    // gap between frames to dump features and clear the TL -- see
+    // docs/hdmi-cca_interface.md, "Frame Timing".
+    parameter VBLANK_LINES = 45
 )(
     input  logic i_clk,
     input  logic i_rst,
@@ -42,7 +48,11 @@ module pattern_gen #(
     logic [$clog2(HEIGHT)-1:0] y_cnt;
     logic [7:0] frame_count;
     logic active_frame;
-    
+
+    localparam VBLANK_CYCLES = VBLANK_LINES * WIDTH;
+    logic [31:0] blank_cnt;
+    logic in_blank;
+
     always_ff @(posedge i_clk) begin
         if (i_rst) begin
             x_cnt <= '0;
@@ -50,26 +60,48 @@ module pattern_gen #(
             frame_count <= '0;
             m_axis_tvalid <= 1'b0;
             active_frame <= 1'b0;
+            blank_cnt <= '0;
+            in_blank <= 1'b0;
         end else if (i_enable || active_frame) begin
             active_frame <= 1'b1;
-            m_axis_tvalid <= 1'b1; // We can add random stalls later if desired
-            
-            // Increment logic
-            if (x_cnt == WIDTH - 1) begin
-                x_cnt <= '0;
-                if (y_cnt == HEIGHT - 1) begin
-                    y_cnt <= '0;
-                    if (frame_count == NUM_FRAMES - 1) begin
-                        active_frame <= 1'b0; // Stop after N frames
-                        m_axis_tvalid <= 1'b0;
-                    end else begin
-                        frame_count <= frame_count + 1'b1;
-                    end
-                end else begin
-                    y_cnt <= y_cnt + 1'b1;
+
+            if (in_blank) begin
+                // Vertical blanking: hold tvalid low for VBLANK_CYCLES cycles
+                m_axis_tvalid <= 1'b0;
+                blank_cnt <= blank_cnt - 1'b1;
+                if (blank_cnt <= 1) begin
+                    in_blank <= 1'b0;
+                    m_axis_tvalid <= 1'b1;
                 end
             end else begin
-                x_cnt <= x_cnt + 1'b1;
+                m_axis_tvalid <= 1'b1; // We can add random stalls later if desired
+
+                // Increment logic -- only advance once the current pixel has
+                // actually been presented (tvalid high), so each frame
+                // starts at (0,0) with tuser asserted
+                if (m_axis_tvalid) begin
+                    if (x_cnt == WIDTH - 1) begin
+                        x_cnt <= '0;
+                        if (y_cnt == HEIGHT - 1) begin
+                            y_cnt <= '0;
+                            if (frame_count == NUM_FRAMES - 1) begin
+                                active_frame <= 1'b0; // Stop after N frames
+                                m_axis_tvalid <= 1'b0;
+                            end else begin
+                                frame_count <= frame_count + 1'b1;
+                                if (VBLANK_CYCLES > 0) begin
+                                    in_blank <= 1'b1;
+                                    blank_cnt <= VBLANK_CYCLES;
+                                    m_axis_tvalid <= 1'b0;
+                                end
+                            end
+                        end else begin
+                            y_cnt <= y_cnt + 1'b1;
+                        end
+                    end else begin
+                        x_cnt <= x_cnt + 1'b1;
+                    end
+                end
             end
         end else begin
             m_axis_tvalid <= 1'b0;

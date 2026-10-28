@@ -24,6 +24,7 @@ module label_decision_logic_tb();
     ) dut (
         .i_clk(clk),
         .i_rst(rst),
+        .i_frame_done(1'b0),
         .i_pixel_data(pixel_data),
         .first_row(first_row),
         .first_col(first_col),

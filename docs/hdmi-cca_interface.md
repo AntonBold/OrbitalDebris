@@ -60,6 +60,25 @@ Standard AXI4-Stream handshake (`tvalid`/`tready`) is retained for IP compatibil
 
 ---
 
+## Frame Timing
+
+Because `tready` is always high, the Centroiding module relies on idle time
+(`tvalid` low) at two points to do its per-frame housekeeping:
+
+| Gap | Minimum | Why |
+| --- | ------- | --- |
+| Reset released → first pixel | `NUM_LABELS` cycles (1024) | Translator LUT clears itself after reset is released; merges are ignored until it finishes |
+| Last pixel of a frame → first pixel of the next | `2 × NUM_LABELS + 2 × max centroids + ~16` cycles (≈ 2,600 for 1024 labels / 256 centroids; budget 3,000) | Feature Extract dumps to BRAM, and the TL and line buffer clear, before the next frame's pixels can be accepted |
+
+Real 1080p60 video has 45 lines of vertical blanking (≈ 99,000 pixel clocks at
+2200 clocks/line), so the inter-frame gap is met with a wide margin, provided
+the video pipeline passes blanking through as `tvalid` low rather than
+compressing frames back-to-back (e.g., via a frame buffer replaying at a higher
+rate). `pattern_gen` models this with its `VBLANK_LINES` parameter, and
+`cca_top_tb` flags any pixel that arrives while the module is busy.
+
+---
+
 ## Key Decisions
 
 | Decision                                              | Rationale                                                                 |

@@ -18,7 +18,7 @@ module feature_extract_tb();
     logic [LABEL_SIZE-1:0] trans_max;
     
     logic frame_done;
-    logic [23:0] frame_count;
+    logic [22:0] frame_count;
 
     logic [31:0] bram_addr;
     logic [31:0] bram_wdata;
