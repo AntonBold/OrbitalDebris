@@ -25,7 +25,7 @@ Everything in this document describes the **contract at the boundary only**. Nei
 | `s_axis_tlast`  | 1 bit  | in                                       | End of scan line                              |
 | `s_axis_tuser`  | 1 bit  | in                                       | Start of frame (asserted on first pixel only) |
 | `s_axis_aclk`   | —      | in                                       | Interface clock (see Clocking)                |
-| `s_axis_aresetn`| 1 bit  | in                                       | Active-low reset                              |
+| `rst`           | 1 bit  | in                                       | Active-high reset (driven by `proc_sys_reset` `peripheral_reset` in the block design) |
 
 **Note on `tdata` width:** the pixel value is logically 1 bit. It is carried in an 8-bit (1-byte) field because standard AXI4-Stream infrastructure IP (width converters, FIFOs) operates on byte granularity — sub-byte `TDATA` widths aren't a configurable option. This is a hardware constraint of the shared toolchain, not a design preference by either side.
 

@@ -1,0 +1,5 @@
+# Runs from the repo root before the build (see scripts/simulate.sh).
+# Seed and frame count come from the plusargs: ./simulate cca_random_tb +seed=5 +n=200
+SEED=$(echo "$SIM_ARGS" | sed -n 's/.*+seed=\([0-9]*\).*/\1/p'); SEED=${SEED:-1}
+N=$(echo "$SIM_ARGS" | sed -n 's/.*+n=\([0-9]*\).*/\1/p'); N=${N:-40}
+python3 scripts/golden/cca_golden.py random --seed "$SEED" --n "$N" --out sim/build/vectors/cca_random.txt

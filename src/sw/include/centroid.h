@@ -17,6 +17,7 @@
 typedef struct {
     float x;
     float y;
+    uint16_t area;      // pixels (from the PL; 0 when not known, e.g. CSV input)
 } Centroid;
 
 typedef struct {
@@ -40,6 +41,7 @@ typedef struct {
 typedef struct {
     Centroid centroids[MAX_CENTROIDS];
     int count;
+    uint32_t frame_number;  // from the BRAM header (0 when not from the PL)
 } CentroidFrame;
 
 typedef struct {

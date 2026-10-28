@@ -1,0 +1,2 @@
+# Runs from the repo root before the build (see scripts/simulate.sh)
+python3 scripts/golden/cca_golden.py directed --out sim/build/vectors/cca_directed.txt
