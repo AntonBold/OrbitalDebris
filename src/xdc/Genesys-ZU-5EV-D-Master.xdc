@@ -119,20 +119,20 @@ create_clock -period 40.000 -name sysclk [get_ports sysclk]
 #set_property -dict {PACKAGE_PIN A15  IOSTANDARD LVCMOS33 } [get_ports { jd[7] }]; #IO_L3N_AD13N_44/24 Sch=jd[10]
 
 ## Buttons
-#set_property -dict { PACKAGE_PIN B10  IOSTANDARD LVCMOS18 } [get_ports { btn[2] }]; #IO_L9N_AD11N_45/25 Sch=btn[2]
+set_property -dict { PACKAGE_PIN B10  IOSTANDARD LVCMOS18 } [get_ports { button] }]; #IO_L9N_AD11N_45/25 Sch=btn[2]
 #set_property -dict { PACKAGE_PIN H12  IOSTANDARD LVCMOS18 } [get_ports { btn[3] }]; #IO_L4N_AD12N_45/25 Sch=btn[3]
 #set_property -dict { PACKAGE_PIN J12  IOSTANDARD LVCMOS18 } [get_ports { btn[4] }]; #IO_L4P_AD12P_45/25 Sch=btn[4]
 #set_property -dict { PACKAGE_PIN F12  IOSTANDARD LVCMOS18 } [get_ports { btn[5] }]; #IO_L6P_HDGC_45/25 Sch=btn[5]
 #set_property -dict { PACKAGE_PIN A12  IOSTANDARD LVCMOS18 } [get_ports { btn[6] }]; #IO_L11P_AD9P_45/25 Sch=btn[6]
 
 ## Switches
-set_property -dict { PACKAGE_PIN AB14  IOSTANDARD LVCMOS33 } [get_ports { sw0 }]; #IO_L8N_HDGC_44/24 Sch=sw[0]
+#set_property -dict { PACKAGE_PIN AB14  IOSTANDARD LVCMOS33 } [get_ports { sw0 }]; #IO_L8N_HDGC_44/24 Sch=sw[0]
 #set_property -dict { PACKAGE_PIN Y13   IOSTANDARD LVCMOS33 } [get_ports { sw[1] }]; #IO_L10N_AD10N_44/24 Sch=sw[1]
 #set_property -dict { PACKAGE_PIN W12   IOSTANDARD LVCMOS33 } [get_ports { sw[2] }]; #IO_L11P_AD9P_44/24 Sch=sw[2]
 #set_property -dict { PACKAGE_PIN AB15  IOSTANDARD LVCMOS33 } [get_ports { sw[3] }]; #IO_L8P_HDGC_44/24 Sch=sw[3]
 
 ## LED
-set_property -dict { PACKAGE_PIN L14   IOSTANDARD LVCMOS33 } [get_ports { led0 }]; #IO_L12P_AD0P_46/26 Sch=ld[1]
+#set_property -dict { PACKAGE_PIN L14   IOSTANDARD LVCMOS33 } [get_ports { led0 }]; #IO_L12P_AD0P_46/26 Sch=ld[1]
 #set_property -dict { PACKAGE_PIN L13   IOSTANDARD LVCMOS33 } [get_ports { ld[1] }]; #IO_L12N_AD0N_46/26 Sch=ld[2]
 #set_property -dict { PACKAGE_PIN K14   IOSTANDARD LVCMOS33 } [get_ports { ld[2] }]; #IO_L11P_AD1P_46/26 Sch=ld[3]
 #set_property -dict { PACKAGE_PIN J14   IOSTANDARD LVCMOS33 } [get_ports { ld[3] }]; #IO_L11N_AD1N_46/26 Sch=ld[4]
