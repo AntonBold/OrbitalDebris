@@ -1,0 +1,4 @@
+# Testbench: fifo_tb
+# Paths are relative to the repo root. One file per line; # starts a comment.
+src/tb/fifo_tb.sv
+src/hdl/fifo.sv

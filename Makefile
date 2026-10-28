@@ -3,8 +3,11 @@
 #   make sim TOP=<module_name> SRCS="file1.sv file2.sv ..."
 
 SIM_DIR := sim/build
-OBJ_DIR := $(SIM_DIR)/obj_dir
-BIN     := $(SIM_DIR)/sim
+# Per-testbench build dir and binary: with a shared one, switching back to a
+# TB whose objects were already up to date skipped the relink and ran the
+# previously built TB instead.
+OBJ_DIR := $(SIM_DIR)/obj_dir/$(TOP)
+BIN     := $(SIM_DIR)/sim_$(TOP)
 VCD     := dump.vcd
 
 .PHONY: sim clean
@@ -14,10 +17,12 @@ sim:
 		echo "Usage: make sim TOP=<module_name> SRCS=\"file1.sv file2.sv ...\""; \
 		exit 1; \
 	fi
-	mkdir -p $(SIM_DIR)
-	verilator --binary --timing -Mdir $(OBJ_DIR) -o $(CURDIR)/$(BIN) \
+	mkdir -p $(OBJ_DIR)
+	rm -f $(SIM_DIR)/$(VCD)
+	# -Wno-fatal: lint warnings still print but don't stop the build
+	verilator --binary --timing -Wno-fatal -Mdir $(OBJ_DIR) -o $(CURDIR)/$(BIN) \
 		--top-module $(TOP) $(SRCS) --trace-vcd
-	cd $(SIM_DIR) && ./sim
+	cd $(SIM_DIR) && ./sim_$(TOP)
 	@echo "Waveform: $(SIM_DIR)/$(VCD)"
 
 clean:

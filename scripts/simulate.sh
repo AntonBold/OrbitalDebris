@@ -1,26 +1,45 @@
 #!/usr/bin/env bash
-# Usage: ./simulate <top_level_tb.sv> [dependency1.sv dependency2.sv ...]
+# Usage: ./simulate <testbench>
 #
-# Paths should be given relative to the repo root (debris_tracking/), e.g.:
-#   ./simulate sim/tb/uart_tb.sv src/hdl/uart_tx.sv src/hdl/uart_rx.sv
+# <testbench> is the testbench name, e.g. any of:
+#   ./simulate cca_top_tb
+#   ./simulate cca_top_tb.sv
+#   ./simulate src/tb/cca_top_tb.sv
 #
-# Always builds fresh and always generates a VCD waveform in sim/build/dump.vcd
+# The files to compile come from scripts/filelists/<testbench>.txt: one path
+# per line, relative to the repo root, with # comments allowed. To add a new
+# testbench, add a file list for it there.
+#
+# Assumes the testbench module name matches the filename. Override by
+# exporting TOP_MODULE before calling the script if that's not the case.
+#
+# Waveform lands in sim/build/dump.vcd if the testbench calls $dumpfile/$dumpvars.
 
 set -euo pipefail
 
-if [ $# -lt 1 ]; then
-    echo "Usage: $0 <top_level_tb.sv> [dependency.sv ...]"
+REPO_ROOT="$(git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel)"
+FILELIST_DIR="$REPO_ROOT/scripts/filelists"
+
+if [ $# -ne 1 ]; then
+    echo "Usage: $0 <testbench>"
+    echo "Available testbenches:"
+    for f in "$FILELIST_DIR"/*.txt; do
+        echo "  $(basename "${f%.txt}")"
+    done
     exit 1
 fi
 
-TOP_FILE="$1"
-shift
-DEPS="$*"
+TB_NAME="$(basename "${1%.sv}")"
+FILELIST="$FILELIST_DIR/$TB_NAME.txt"
 
-# Assumes the testbench module name matches the filename (minus extension).
-# Override by exporting TOP_MODULE before calling the script if that's not the case.
-TOP_MODULE="${TOP_MODULE:-$(basename "${TOP_FILE%.*}")}"
+if [ ! -f "$FILELIST" ]; then
+    echo "No file list for '$TB_NAME' (expected $FILELIST)"
+    exit 1
+fi
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Strip comments and blank lines
+SRCS="$(sed -e 's/#.*//' -e 's/[[:space:]]*$//' -e '/^$/d' "$FILELIST" | tr '\n' ' ')"
 
-make -C "$SCRIPT_DIR" sim TOP="$TOP_MODULE" SRCS="$TOP_FILE $DEPS"
+TOP_MODULE="${TOP_MODULE:-$TB_NAME}"
+
+make -C "$REPO_ROOT" sim TOP="$TOP_MODULE" SRCS="$SRCS"

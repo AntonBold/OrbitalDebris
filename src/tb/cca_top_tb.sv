@@ -6,6 +6,7 @@ module cca_top_tb();
     // runs in milliseconds instead of minutes, but tests all the same logic!
     parameter SIM_WIDTH = 200;
     parameter SIM_HEIGHT = 200;
+    parameter NUM_FRAMES = 5;
 
     logic clk;
     logic rst;
@@ -37,15 +38,15 @@ module cca_top_tb();
         // Collision Object: U-Shape
         .COLL_X_START(150), .COLL_Y_START(150), 
         .COLL_WIDTH(20), .COLL_HEIGHT(15), .COLL_THICKNESS(4),
-        .NUM_FRAMES(5) 
+        .NUM_FRAMES(NUM_FRAMES)
     ) pg (
         .i_clk(clk),
         .i_rst(rst),
         .i_enable(enable_pg),
-        .o_tdata(tdata),
-        .o_tvalid(tvalid),
-        .o_tuser(tuser),
-        .o_tlast(tlast)
+        .m_axis_tdata(tdata),
+        .m_axis_tvalid(tvalid),
+        .m_axis_tuser(tuser),
+        .m_axis_tlast(tlast)
     );
 
     // 2. Instantiate the Top Level DUT
@@ -54,18 +55,19 @@ module cca_top_tb();
         .ROW_SIZE(SIM_WIDTH),
         .COL_SIZE(SIM_HEIGHT)
     ) dut (
-        .i_clk(clk),
-        .i_rst(rst),
+        .clk(clk),
+        .rst(rst),
         .i_tdata(tdata),
         .i_tvalid(tvalid),
         .i_tuser(tuser),
         .i_tlast(tlast),
-        .i_trdy(trdy),
+        .o_trdy(trdy),
         .o_interrupt(interrupt),
         .o_bram_addr(bram_addr),
         .o_bram_wdata(bram_wdata),
         .o_bram_we(bram_we),
-        .o_bram_en(bram_en)
+        .o_bram_en(bram_en),
+        .o_bram_clk()
     );
 
     // Clock Generation
@@ -80,61 +82,85 @@ module cca_top_tb();
     // This block monitors the BRAM bus and prints the formatted centroid data
     // exactly as the ARM processor would read it.
     
+    // bram_addr is a byte offset into the BRAM (the 0xA000_0000 base is added
+    // on the PS side). Decode relative to the start of the 0x804-byte frame
+    // block: offset 0 is the header, then centroids as (word 1, word 2) pairs.
+    logic [31:0] frame_off;
+    assign frame_off = bram_addr % 32'h804;
+
     always_ff @(posedge clk) begin
         if (bram_en && bram_we == 4'b1111) begin
             // Is it the Header?
-            if (bram_addr == 32'hA000_0000 || bram_addr == 32'hA000_0804 || bram_addr == 32'hA000_1008) begin
+            if (frame_off == 0) begin
                 $display("\n==========================================");
                 $display("[%0t] BRAM WRITE: FRAME HEADER", $time);
                 $display("    Address:  %0h", bram_addr);
-                $display("    Frame #:  %0d", bram_wdata[31:8]);
-                $display("    Centroids:%0d", bram_wdata[7:0]);
+                $display("    Frame #:  %0d", bram_wdata[31:9]);
+                $display("    Centroids:%0d", bram_wdata[8:0]);
                 $display("==========================================\n");
             end 
             // Is it Word 1 (X_sum)?
-            else if ((bram_addr % 8) == 4) begin
+            else if ((frame_off % 8) == 4) begin
                 $display("[%0t] BRAM WRITE: CENTROID WORD 1", $time);
                 $display("    Address:  %0h", bram_addr);
                 $display("    X_sum:    %0d", bram_wdata);
             end
             // Is it Word 2 (Y_sum + Meta)?
-            else if ((bram_addr % 8) == 0) begin
+            else if ((frame_off % 8) == 0) begin
                 $display("[%0t] BRAM WRITE: CENTROID WORD 2", $time);
                 $display("    Address:  %0h", bram_addr);
-                $display("    Y_sum:    %0d", bram_wdata[27:13]);
-                $display("    Area:     %0d", bram_wdata[12:1]);
+                $display("    Y_sum:    %0d", bram_wdata[31:10]);
+                $display("    Area:     %0d", bram_wdata[9:1]);
                 $display("    Valid:    %0b\n", bram_wdata[0]);
             end
         end
+    end
+
+    // Frame-timing check: pixels must only arrive while the TL is idle (not
+    // clearing) and feature_extract is accumulating (not dumping). If this
+    // fires, the inter-frame gap is too short -- see docs/hdmi-cca_interface.md.
+    always @(posedge clk) begin
+        if (!rst && tvalid &&
+            (dut.decision_top.tl.state != 0 ||   // 0 = IDLE
+             dut.fe.state != 0))                 // 0 = S_accum
+            $error("[%0t] FRAME TIMING ERROR: pixel arrived while CCA busy (tl.state=%0d fe.state=%0d)",
+                   $time, dut.decision_top.tl.state, dut.fe.state);
+    end
+
+    // Waveform dump (lands in sim/build/dump.vcd)
+    initial begin
+        $dumpfile("dump.vcd");
+        $dumpvars(0, cca_top_tb);
     end
 
     // Test Sequence
     initial begin
         rst = 1;
         enable_pg = 0;
+        repeat(5) @(posedge clk);
+        rst = 0;
 
-        // Give the Translator LUT its 1024 cycles to initialize
+        // The Translator LUT clears itself over NUM_LABELS cycles, starting
+        // when reset is *released* -- wait for that before streaming
         $display("Waiting for Translator LUT initialization...");
         repeat(1050) @(posedge clk);
-        rst = 0;
-        @(posedge clk);
 
-        $display("Starting Pattern Generator (Frame size: %0dx%0d, 3 Frames)...", SIM_WIDTH, SIM_HEIGHT);
+        $display("Starting Pattern Generator (Frame size: %0dx%0d, %0d Frames)...", SIM_WIDTH, SIM_HEIGHT, NUM_FRAMES);
         enable_pg = 1;
         @(posedge clk);
         enable_pg = 0; // It auto-latches and runs for NUM_FRAMES
 
-        // Now we wait for 3 interrupts to fire!
+        // Now we wait for one interrupt per frame
         fork
             begin
-                for (int i = 0; i < 5; i++) begin
+                for (int i = 0; i < NUM_FRAMES; i++) begin
                     @(posedge interrupt);
                     $display("[%0t] SUCCESS: Interrupt %0d received! Frame processing and dump complete.", $time, i+1);
                 end
             end
             begin
-                #5000000; // 5 millisecond timeout (plenty of time for 3 frames)
-                $display("[%0t] TIMEOUT ERROR: Did not receive all 3 interrupts!", $time);
+                #5000000; // 5 millisecond timeout (~0.4 ms per 200x200 frame)
+                $display("[%0t] TIMEOUT ERROR: Did not receive all %0d interrupts!", $time, NUM_FRAMES);
             end
         join_any
         disable fork;

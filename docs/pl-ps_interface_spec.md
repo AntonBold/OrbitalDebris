@@ -36,16 +36,19 @@ Word 1
 Bit 31-0
 [ X sum (32 bits)                                   ]
 Word 2
-Bit 31-28   Bits 27-8                Bits 7-1     Bit 0        
-[ Reserved ][ Y sum (20 bits)      ][pixel count][valid]
+Bits 31-10                          Bits 9-1      Bit 0
+[ Y sum (22 bits)                 ][pixel count][valid]
 ```
 
 | Word  | Bits  | Field     | Description                         |
 | ----- | ----- | --------  | ----------------------------------- |
 |   1   | 31:0  | X sum     | X coordinates sum, 32-bit           |
-|   2   | 27:8  | Y sum     | Y coordinates sum, 20-bit           |
+|   2   | 31:10 | Y sum     | Y coordinates sum, 22-bit           |
+|   2   | 9:1   | \# pixels | Number of pixels in this centroid, 9-bit (max 511) |
 |   2   |  0    | Valid     | 1 = valid centroid, 0 = empty slot  |
-|   2   | 7:1   | \# pixels | Number of pixels in this centroid   |
+
+Objects are expected to be well under 511 pixels. At that size Y sum is at
+most 511 × 1079 = 551,369, which needs 20 bits, so the 22-bit field has headroom.
 
 ---
 
@@ -80,8 +83,8 @@ Frame block size: `513 × 4 = 2052 bytes = 0x804`
 The first word of each frame block is a header:
 
 ```
-Bits 31:8   — Frame number (incrementing counter, wraps at 0xFFFFFF)
-Bits 7:0    — Centroid count (number of valid centroids in this frame, 0–256)
+Bits 31:9   — Frame number (23-bit incrementing counter; currently saturates at 0x7FFFFF, ~39 h at 60 fps)
+Bits 8:0    — Centroid count (9-bit, number of valid centroids in this frame, 0–256)
 ```
 
 The PS reads the header first to know how many centroid words to process — it does not need to scan all 256 slots.
@@ -138,7 +141,7 @@ On interrupt:
 ```c
 typedef struct {
     uint32_t x_sum;       
-    uint32_t word2_meta;  // bits 27:8 = Y sum, bits 7:1 = pixel count, bit 0 = valid
+    uint32_t word2_meta;  // bits 31:10 = Y sum, bits 9:1 = pixel count, bit 0 = valid
 } Centroid;
 
 typedef struct {
@@ -156,7 +159,7 @@ typedef struct {
 
 - [ ] Confirm BRAM base address once assigned in Vivado address editor
 - [ ] Confirm interrupt line number on PS GIC
-- [ ] Decide whether frame_number wraps or saturates at 0xFFFFFF
+- [ ] Decide whether frame_number wraps or saturates at 0x7FFFFF
 - [ ] Confirm 256 max centroids is sufficient for worst-case video
 - [ ] Define behavior if PS has not finished processing when next interrupt arrives (frame skip vs queue)
 

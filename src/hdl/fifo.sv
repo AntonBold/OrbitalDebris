@@ -31,8 +31,11 @@ module fifo  #(
             rd_ptr <= '0;
         end
         else begin
-            // allow simultaneous read and write if both are asserted
-            if (i_data_valid && !o_full) begin
+            // allow simultaneous read and write if both are asserted --
+            // including when full, since the read frees a slot this cycle.
+            // (The CCL line buffer sits exactly full in steady state; blocking
+            // the write there drops one label and shifts "north" to north-east.)
+            if (i_data_valid && (!o_full || (i_rd_data && !o_empty))) begin
                 if (wr_ptr[ADDR_WIDTH-1:0] + 1 == DEPTH) begin
                     wr_ptr[ADDR_WIDTH-1:0] <= 0;
                     wr_ptr[ADDR_WIDTH] <= ~wr_ptr[ADDR_WIDTH];
