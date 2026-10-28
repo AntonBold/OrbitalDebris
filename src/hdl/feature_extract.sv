@@ -30,7 +30,7 @@ module feature_extract #(
 // initialize RAMs for simulation by declaring initial values
 logic [31:0] area_ram [0:NUM_LABELS-1] = '{default: '0};
 logic [31:0] sum_x_ram [0:NUM_LABELS-1] = '{default: '0};
-logic [19:0] sum_y_ram [0:NUM_LABELS-1] = '{default: '0};
+logic [21:0] sum_y_ram [0:NUM_LABELS-1] = '{default: '0};
 
 // zeros table defaults to 1 (unmerged)
 logic zeros_ram [0:NUM_LABELS-1] = '{default: 1'b1};
@@ -56,7 +56,8 @@ typedef enum logic[2:0] {
     S_dump_w1       = 3'd3,
     S_dump_w2       = 3'd4,
     S_dump_head     = 3'd5,
-    S_done          = 3'd6
+    S_done          = 3'd6,
+    S_clear         = 3'd7      // after reset: zero every table entry
 } state_t;
 
 state_t state, next_state;
@@ -82,22 +83,22 @@ end
 
 // read port A
 logic [31:0] read_area_a, read_x_a;
-logic [19:0] read_y_a;
+logic [21:0] read_y_a;
 assign read_area_a  = area_ram[addra] & {32{zeros_ram[addra]}};
 assign read_x_a     = sum_x_ram[addra] & {32{zeros_ram[addra]}};
-assign read_y_a     = sum_y_ram[addra] & {20{zeros_ram[addra]}};
+assign read_y_a     = sum_y_ram[addra] & {22{zeros_ram[addra]}};
 
 // read port b
 logic [31:0] read_area_b, read_x_b;
-logic [19:0] read_y_b;
+logic [21:0] read_y_b;
 assign read_area_b  = area_ram[addrb] & {32{zeros_ram[addrb]}};
 assign read_x_b     = sum_x_ram[addrb] & {32{zeros_ram[addrb]}};
-assign read_y_b     = sum_y_ram[addrb] & {20{zeros_ram[addrb]}};
+assign read_y_b     = sum_y_ram[addrb] & {22{zeros_ram[addrb]}};
 
 
 // accumulator signals and math
 logic [31:0] new_area, new_x;
-logic [19:0] new_y;
+logic [21:0] new_y;
 
     always_comb begin
         new_area    = '0;
@@ -142,8 +143,11 @@ end
 
 always_ff @(posedge i_clk) begin
     if (i_rst) begin
-        state <= S_accum;
-        read_ptr <= 1;
+        // The tables aren't reset by i_rst (they're RAMs), so sweep them
+        // after reset like the TL does; otherwise a frame cut short by reset
+        // leaves sums that the next dump reports as objects
+        state <= S_clear;
+        read_ptr <= 0;
         valid_centroid_count <= '0;
         frame_slot <= 0;
     end else begin
@@ -161,6 +165,10 @@ always_ff @(posedge i_clk) begin
                 frame_slot <= '0;
             else
                 frame_slot <= frame_slot + 1'b1;
+        end
+
+        if (state == S_clear && read_ptr == NUM_LABELS - 1) begin
+            read_ptr <= 1;
         end
 
         if (state == S_dump_w2) begin
@@ -213,8 +221,7 @@ always_comb begin
             o_bram_we = 4'b1111;
             o_bram_addr = frame_base_addr + word_offset;
             // Pack: 22 bits Y_sum [31:10], 9 bits Area [9:1], 1 bit Valid [0]
-            // sum_y_ram is 20 bits (511 px * 1079 max row fits), so zero-extend
-            o_bram_wdata = {2'b0, read_y_a, read_area_a[8:0], 1'b1};
+            o_bram_wdata = {read_y_a, read_area_a[8:0], 1'b1};
             next_state = S_dump_addr;
             dump_clear_we = 1'b1;
         end
@@ -224,6 +231,12 @@ always_comb begin
             o_bram_addr = frame_base_addr;
             o_bram_wdata = {i_frame_count, valid_centroid_count};
             next_state = S_done;
+        end
+        S_clear: begin
+            dump_clear_we = 1'b1;
+            if (read_ptr == NUM_LABELS - 1) begin
+                next_state = S_accum;
+            end
         end
         S_done: begin
             o_bram_en = 1'b0;

@@ -1,0 +1,14 @@
+# Testbench: cca_full_tb (self-checking; core in cca_env_tb.sv)
+# Paths are relative to the repo root. One file per line; # starts a comment.
+# Vectors are generated first by cca_full_tb.pre (see scripts/simulate.sh).
+src/tb/cca_full_tb.sv
+src/tb/cca_env_tb.sv
+src/tb/axis_frame_driver.sv
+src/tb/cca_bram_model.sv
+src/hdl/cca_top.sv
+src/hdl/cca_control.sv
+src/hdl/ccl_decision.sv
+src/hdl/fifo.sv
+src/hdl/label_decision_logic.sv
+src/hdl/translator_lut.sv
+src/hdl/feature_extract.sv

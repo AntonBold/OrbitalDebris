@@ -52,11 +52,43 @@ module ccl_decision #(
     logic reg_first_row;
     logic reg_first_col;
 
+    // reg_valid: the registered pixel is new this cycle. Decisions, TL
+    // writes and feature updates happen once per pixel, not again on every
+    // idle (tvalid low) cycle while the pixel sits in reg_input_pixel.
+    logic reg_valid;
+    logic decide_pixel;
+    assign decide_pixel = reg_input_pixel && reg_valid;
+
+    // TL update uses the second-lookup values: TL[max(DOF,DOG)] = min(DOF,DOG).
+    // Writing TL[max(DOA,DOB)] instead can overwrite a label that already
+    // points somewhere (DOA/DOB are only one hop from the stored labels) and
+    // lose an equivalence the feature table has already merged.
+    logic tl_we;
+    logic [LABEL_SIZE-1:0] tl_addrd, tl_dind;
+    assign tl_we    = lut_we && (dof != dog);
+    assign tl_dind  = (dof < dog) ? dof : dog;
+    assign tl_addrd = (dof < dog) ? dog : dof;
+
+    // Paper Sec. 4.1: the line buffer stores the *translated* R2 label
+    // (DOE), read after this cycle's TL update. The update isn't in the TL
+    // array until the clock edge, so forward it.
+    logic [LABEL_SIZE-1:0] r2_translated;
+    assign r2_translated = (tl_we && tl_addrd == reg_label) ? tl_dind : doe;
+
+    // One write per pixel, carrying the previous pixel's label. Skip it for
+    // the first pixel of a frame: R2 then holds a label from the last frame.
+    logic fifo_we;
+    assign fifo_we = reg_valid && !(reg_first_row && reg_first_col);
+
     // Continuous assignments for module outputs
-    assign o_valid_coll = lut_we;
-    assign o_trans_min = lut_dind;
-    assign o_trans_max = lut_addrd;
-    assign o_trans_label = next_label;
+    // Second TL access for Extract Feature (paper: FT(TL(TL(Lj)))).
+    // dof/dog are TL(DOA)/TL(DOB); if both resolve to the same label the
+    // pixel joins an already-merged object, so it's not a collision for FE.
+    assign o_valid_coll = tl_we;
+    assign o_trans_min = tl_dind;
+    assign o_trans_max = tl_addrd;
+    assign o_trans_label = (next_label == lut_doa) ? dof :
+                           (next_label == lut_dob) ? dog : next_label;
     assign o_valid_label = valid_label;
     assign o_x_coord = reg_x_coord;
     assign o_y_coord = reg_y_coord;
@@ -68,15 +100,15 @@ module ccl_decision #(
         .i_clk(i_clk),
         .i_rst(i_rst | i_frame_done),
 
-        .dind(lut_dind),
-        .i_we(lut_we),
-        .addrd(lut_addrd),
+        .dind(tl_dind),
+        .i_we(tl_we),
+        .addrd(tl_addrd),
 
         .addra(fifo_out_data),
         .addrb(reg_label),
-        .addre('0),
-        .addrf('0),
-        .addrg('0),
+        .addre(reg_label),
+        .addrf(lut_doa),
+        .addrg(lut_dob),
 
         .doa(lut_doa),
         .dob(lut_dob),
@@ -93,9 +125,9 @@ module ccl_decision #(
         // Cleared each frame like the TL, otherwise row 1 of the next frame
         // reads the previous frame's last row as its north neighbors
         .i_rst(i_rst | i_frame_done),
-        .i_data_valid(valid_pixel),
+        .i_data_valid(fifo_we),
         .i_rd_data(read_en),
-        .i_data(next_label),
+        .i_data(r2_translated),
         .o_data(fifo_out_data),
         .o_full(fifo_full),
         .o_empty(fifo_empty)
@@ -107,7 +139,7 @@ module ccl_decision #(
         .i_clk(i_clk),
         .i_rst(i_rst),
         .i_frame_done(i_frame_done),
-        .i_pixel_data(reg_input_pixel),
+        .i_pixel_data(decide_pixel),
         .first_row(reg_first_row),
         .first_col(reg_first_col),
         .i_trans_label_n(lut_doa),
@@ -120,9 +152,23 @@ module ccl_decision #(
     );
 
     always_ff @(posedge i_clk) begin
+        if (i_rst) begin
+            reg_valid <= 1'b0;
+            reg_label <= '0;
+        end else begin
+            reg_valid <= i_valid_pixel;
+            // The label decided this cycle is the west neighbour of the next
+            // pixel. Capture it while the decision is valid, not when the
+            // next pixel arrives (by then an idle gap would have zeroed it).
+            if (reg_valid) begin
+                reg_label <= next_label;
+            end
+        end
+    end
+
+    always_ff @(posedge i_clk) begin
         if(i_rst) begin
             reg_input_pixel <= 1'b0;
-            reg_label <= '0;
             reg_x_coord <= '0;
             reg_y_coord <= '0;
             reg_first_row <= 1'b0;
@@ -137,9 +183,6 @@ module ccl_decision #(
             reg_y_coord <= i_y_coord;
             reg_first_row <= i_first_row;
             reg_first_col <= i_first_col;
-            // The labeling assignment output by decision_logic (next_label) 
-            // becomes the reg_label for the NEXT pixel!
-            reg_label <= next_label;
         end
     end
 

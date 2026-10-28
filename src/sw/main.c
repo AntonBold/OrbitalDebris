@@ -3,6 +3,7 @@
 #include "bram_io.h"
 #include "classify.h"
 #include "track.h"
+#include "interrupt.h"
 
 // Config --
 
@@ -33,13 +34,28 @@ static int trk_initialized = 0;
 int main(void)
 {
     bram_init();
+    bram_clear_headers();   // before the interrupt is enabled (see pl-ps spec, Reset)
+
+    // If interrupt setup fails, fall back to polling the BRAM headers
+    int use_irq = (interrupt_init() == 0);
+    uint32_t irq_handled = 0;
 
     while(1) {
+        if (use_irq) {
+            // wait for the next frame interrupt; the ISR only counts them
+            uint32_t irq_now = frame_irq_count;
+            if (irq_now == irq_handled)
+                continue;
+            irq_handled = irq_now;
+        }
+
         // read newest frame from bram
         CentroidFrame new_frame;
         int frame_num = bram_read_frame(&new_frame);
 
-        // no new frame available -- keep waiting
+        // no new frame available -- keep waiting. (A torn read means the PL
+        // lapped us mid-copy; the newer frame's interrupt is already counted,
+        // so the next pass picks it up.)
         if (frame_num < 0)
             continue;
         
@@ -63,7 +79,6 @@ int main(void)
         }
 
         // TODO: write results back to PL for HDMI overlay
-        // TODO: add interrupt handler instead of polling
     }
 
     return 0;
