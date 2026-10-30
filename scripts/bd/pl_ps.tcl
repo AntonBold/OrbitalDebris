@@ -50,9 +50,11 @@ proc create_pl_ps {repo_root cca_num_labels} {
         CONFIG.C_KIND_OF_EDGE   0xFFFFFFFF] $intc
 
     # ---- RTL module references ----------------------------------------------
-    set cca [create_bd_cell -type module -reference cca_top cca_top_0]
+    # A module reference's top file can't be SystemVerilog, so cca_top and
+    # pattern_gen go through the Verilog shells src/hdl/*_bd.v.
+    set cca [create_bd_cell -type module -reference cca_top_bd cca_top_0]
     set_property CONFIG.NUM_LABELS $cca_num_labels $cca
-    create_bd_cell -type module -reference pattern_gen    pattern_gen_0
+    create_bd_cell -type module -reference pattern_gen_bd pattern_gen_0
     create_bd_cell -type module -reference sync_debouncer sync_debouncer_0
 
     # Vivado infers clock/reset/interrupt pins on module references from
