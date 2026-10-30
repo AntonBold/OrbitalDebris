@@ -23,6 +23,20 @@ proc create_pl_ps {repo_root cca_num_labels} {
     source $repo_root/scripts/bd/pl_ps_zynq.tcl
     set_property -dict $pl_ps_zynq_config $ps
 
+    # The Digilent board preset (boards/.../C.0/preset.xml) describes the
+    # DDR4 wrong: 4 Gb x8 parts. The board has 8 Gb x16 parts, and with the
+    # preset's values the A53 hangs on its first DDR access (commit 79e0893).
+    # Set them again on their own so nothing in the big dict can override
+    # them, and check them after validation.
+    set ddr_config {
+        CONFIG.PSU__DDRC__DEVICE_CAPACITY      {8192 MBits}
+        CONFIG.PSU__DDRC__DRAM_WIDTH           {16 Bits}
+        CONFIG.PSU__DDRC__ROW_ADDR_COUNT       {16}
+        CONFIG.PSU__DDRC__BG_ADDR_COUNT        {1}
+        CONFIG.PSU__CRF_APB__DDR_CTRL__FREQMHZ {1065}
+    }
+    set_property -dict $ddr_config $ps
+
     # ---- Xilinx IP ----------------------------------------------------------
     set smc [create_bd_cell -type ip -vlnv xilinx.com:ip:smartconnect:1.0 axi_smc]
     set_property -dict [list CONFIG.NUM_SI 1 CONFIG.NUM_MI 2] $smc
@@ -127,6 +141,14 @@ expected edge. Set it in the axi_intc GUI (Interrupts type: Manual, Edge)\
 and update the C_KIND_OF_INTR lines in scripts/bd/pl_ps.tcl."
     }
     puts "axi_intc_0 C_KIND_OF_INTR = $kind (input 0 edge-sensitive)"
+
+    foreach {param want} $ddr_config {
+        set got [get_property $param $ps]
+        if {$got ne $want} {
+            error "zynq_ultra_ps_e_0 $param = '$got', expected '$want' (DDR4 on the Genesys ZU)"
+        }
+    }
+    puts "zynq_ultra_ps_e_0 DDR: 8192 MBits x16 parts, 16 row bits, 1 bank-group bit"
 
     save_bd_design
 }
