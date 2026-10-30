@@ -27,22 +27,25 @@ set(USER_UNDEFINED_SYMBOLS
 # Example 3: Adding ${CMAKE_SOURCE_DIR}/data/include to add data/include from this project.
 
 set(USER_INCLUDE_DIRECTORIES
-"${CMAKE_CURRENT_SOURCE_DIR}/../../src/app/include"
+"${CMAKE_CURRENT_SOURCE_DIR}/../../../src/sw/include"
 )
 
 #Add any source below, they will be added as Compile sources.
 #Example 1: Adding /proj/data/helloworld.c will pass /proj/data/helloworld.c
 #Example 2: Adding ../../common/helloworld.c will consider the path as relative to this component directory
 #Example 3: Adding ${MY_ENV}/data/helloworld.c are expanded using project-specific environment settings.
+# App sources live in src/sw (repo root = three levels up from here).
+# test_bram_io.c and test_harness.c are host tests with their own main().
 set(USER_COMPILE_SOURCES
-"main.c"
-"../../src/app/bram_io.c"
-"../../src/app/classify.c"
-"../../src/app/cost_matrix.c"
-"../../src/app/geometry.c"
-"../../src/app/hungarian.c"
-"../../src/app/track.c"
-"../../src/app/interrupt.c"
+"${CMAKE_CURRENT_SOURCE_DIR}/../../../src/sw/main.c"
+"${CMAKE_CURRENT_SOURCE_DIR}/../../../src/sw/bram_io.c"
+"${CMAKE_CURRENT_SOURCE_DIR}/../../../src/sw/bram_debug.c"
+"${CMAKE_CURRENT_SOURCE_DIR}/../../../src/sw/interrupt.c"
+"${CMAKE_CURRENT_SOURCE_DIR}/../../../src/sw/classify.c"
+"${CMAKE_CURRENT_SOURCE_DIR}/../../../src/sw/cost_matrix.c"
+"${CMAKE_CURRENT_SOURCE_DIR}/../../../src/sw/geometry.c"
+"${CMAKE_CURRENT_SOURCE_DIR}/../../../src/sw/hungarian.c"
+"${CMAKE_CURRENT_SOURCE_DIR}/../../../src/sw/track.c"
 )
 
 # -----------------------------------------
