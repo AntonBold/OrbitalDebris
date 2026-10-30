@@ -4,6 +4,14 @@
 #include "classify.h"
 #include "track.h"
 #include "interrupt.h"
+#include "bram_debug.h"
+#include "xil_printf.h"
+
+// PL bring-up: poll the BRAM (so the data path can be checked even if the
+// interrupt path isn't working yet) and print every frame over UART, with
+// the interrupt count alongside so the interrupt path is checked separately.
+// Set to 0 once both work, to wait on the interrupt instead.
+#define BRINGUP_PRINT 1
 
 // Config --
 
@@ -36,9 +44,18 @@ int main(void)
     bram_init();
     bram_clear_headers();   // before the interrupt is enabled (see pl-ps spec, Reset)
 
+    // Printed before interrupt_init(): if that hangs (e.g. the axi_intc isn't
+    // reachable on the bus), this is the last line you see
+    xil_printf("\r\ndebris_app: starting, initializing interrupts...\r\n");
+
     // If interrupt setup fails, fall back to polling the BRAM headers
-    int use_irq = (interrupt_init() == 0);
+    int irq_ok = (interrupt_init() == 0);
+    int use_irq = irq_ok && !BRINGUP_PRINT;
     uint32_t irq_handled = 0;
+
+    xil_printf("debris_app: BRAM at 0x%08x, interrupt init %s, %s\r\n", BRAM_BASE_ADDR,
+               irq_ok ? "ok" : "FAILED", use_irq ? "waiting on interrupts" : "polling the BRAM");
+    bram_print_headers();
 
     while(1) {
         if (use_irq) {
@@ -58,7 +75,13 @@ int main(void)
         // so the next pass picks it up.)
         if (frame_num < 0)
             continue;
-        
+
+#if BRINGUP_PRINT
+        bram_print_frame(&new_frame, frame_irq_count);
+        bram_print_raw_frame((uint32_t)frame_num);
+        bram_print_stats();
+#endif
+
         // classify the new frame
         classifyFrame(clf_memory, clf_memory_count, &new_frame, &config, &clf_current);
 
