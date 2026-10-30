@@ -7,10 +7,9 @@
 #include "bram_debug.h"
 #include "xil_printf.h"
 
-// PL bring-up: poll the BRAM (so the data path can be checked even if the
-// interrupt path isn't working yet) and print every frame over UART, with
-// the interrupt count alongside so the interrupt path is checked separately.
-// Set to 0 once both work, to wait on the interrupt instead.
+// Print every frame over UART (decoded, raw words, reader stats), with the
+// interrupt count alongside. Frames are read on the interrupt; if
+// interrupt_init() fails the loop falls back to polling the BRAM.
 #define BRINGUP_PRINT 1
 
 // Config --
@@ -50,7 +49,7 @@ int main(void)
 
     // If interrupt setup fails, fall back to polling the BRAM headers
     int irq_ok = (interrupt_init() == 0);
-    int use_irq = irq_ok && !BRINGUP_PRINT;
+    int use_irq = irq_ok;
     uint32_t irq_handled = 0;
 
     xil_printf("debris_app: BRAM at 0x%08x, interrupt init %s, %s\r\n", BRAM_BASE_ADDR,
