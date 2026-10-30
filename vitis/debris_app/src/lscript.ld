@@ -3,7 +3,10 @@
 * SPDX-License-Identifier: MIT
 ******************************************************************************/
 
-_STACK_SIZE = DEFINED(_STACK_SIZE) ? _STACK_SIZE : 0x2000;
+/* 2 MB: hungarian() (~795 KB), classifyFrame() and trackFrame() (~270 KB
+ * each) keep 256x256 work arrays on the stack. The 8 KB default overflowed
+ * into code/data and hung the app after the second frame. */
+_STACK_SIZE = DEFINED(_STACK_SIZE) ? _STACK_SIZE : 0x200000;
 _HEAP_SIZE = DEFINED(_HEAP_SIZE) ? _HEAP_SIZE : 0x2000;
 
 _EL0_STACK_SIZE = DEFINED(_EL0_STACK_SIZE) ? _EL0_STACK_SIZE : 1024;
