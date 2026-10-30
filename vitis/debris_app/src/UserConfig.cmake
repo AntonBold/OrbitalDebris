@@ -41,6 +41,7 @@ set(USER_COMPILE_SOURCES
 "${CMAKE_CURRENT_SOURCE_DIR}/../../../src/sw/bram_io.c"
 "${CMAKE_CURRENT_SOURCE_DIR}/../../../src/sw/bram_debug.c"
 "${CMAKE_CURRENT_SOURCE_DIR}/../../../src/sw/interrupt.c"
+"${CMAKE_CURRENT_SOURCE_DIR}/../../../src/sw/telemetry.c"
 "${CMAKE_CURRENT_SOURCE_DIR}/../../../src/sw/classify.c"
 "${CMAKE_CURRENT_SOURCE_DIR}/../../../src/sw/cost_matrix.c"
 "${CMAKE_CURRENT_SOURCE_DIR}/../../../src/sw/geometry.c"

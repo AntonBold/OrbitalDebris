@@ -5,12 +5,18 @@
 #include "track.h"
 #include "interrupt.h"
 #include "bram_debug.h"
+#include "telemetry.h"
 #include "xil_printf.h"
 
-// Print every frame over UART (decoded, raw words, reader stats), with the
-// interrupt count alongside. Frames are read on the interrupt; if
-// interrupt_init() fails the loop falls back to polling the BRAM.
-#define BRINGUP_PRINT 1
+// Each classified frame goes out as a binary telemetry packet on UART0 at
+// 921600 baud (docs/uart-telemetry.md; decode with scripts/telemetry_decode.py).
+// Frames are read on the interrupt; if interrupt_init() fails the loop falls
+// back to polling the BRAM.
+//
+// BRINGUP_PRINT 1 also prints every frame as text (decoded, raw words,
+// reader stats, interrupt count). The decoder shows those lines too, but
+// they're ~700 bytes a frame, so leave it off unless debugging.
+#define BRINGUP_PRINT 0
 
 // Config --
 
@@ -40,6 +46,9 @@ static int trk_initialized = 0;
 
 int main(void)
 {
+    // First, before anything is printed: every byte after this is at 921600
+    int tel_ok = (telemetry_uart_init() == 0);
+
     bram_init();
     bram_clear_headers();   // before the interrupt is enabled (see pl-ps spec, Reset)
 
@@ -54,6 +63,7 @@ int main(void)
 
     xil_printf("debris_app: BRAM at 0x%08x, interrupt init %s, %s\r\n", BRAM_BASE_ADDR,
                irq_ok ? "ok" : "FAILED", use_irq ? "waiting on interrupts" : "polling the BRAM");
+    xil_printf("debris_app: telemetry %s\r\n", tel_ok ? "at 921600 baud" : "UART init FAILED, still at boot baud");
     bram_print_headers();
 
     while(1) {
@@ -86,6 +96,9 @@ int main(void)
 
         // track objects
         trackFrame(trk_initialized ? &trk_prev : NULL, &clf_current, &config, &trk_current);
+
+        // one packet per frame: centroids and their labels
+        telemetry_send_frame(&clf_current.frame, &clf_current.labels, bram_get_stats()->frames_skipped);
 
         trk_prev = trk_current;
         trk_initialized = 1;
