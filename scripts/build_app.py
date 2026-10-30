@@ -25,7 +25,13 @@ before = os.path.getmtime(elf) if os.path.exists(elf) else None
 
 client = vitis.create_client()
 try:
-    client.set_workspace(path=workspace)
+    try:
+        client.set_workspace(path=workspace)
+    except Exception as e:
+        if "already in use" in str(e):
+            sys.exit("workspace %s is open in another Vitis (the IDE, or a leftover server).\n"
+                     "Close it, or check: pgrep -af 'vitis|rigel'" % workspace)
+        raise
     app = client.get_component(name="debris_app")
     app.clean()
     app.build()
