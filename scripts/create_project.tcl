@@ -4,12 +4,19 @@
 #   vivado -mode batch -source scripts/create_project.tcl
 #   vivado -mode gui   -source scripts/create_project.tcl
 #
-# Everything Vivado generates lands in build/ (gitignored). Nothing in build/
-# is a source of truth; delete it and re-run.
+# Everything Vivado generates lands in build/ (gitignored), including the
+# block design and its IP output products. Nothing in build/ is a source of
+# truth; delete it and re-run.
 #
-# Two block designs live side by side (pl_ps, hdmi_rx), each wrapped but
-# neither set as the project top. top.sv instantiates both wrapper modules
-# plus the CCL pipeline and is the actual project top.
+# Sources, all referenced in place (nothing is copied):
+#   src/hdl/*.sv, *.v        RTL (also the module references in the BD)
+#   src/xdc/*.xdc            constraints
+#   scripts/bd/pl_ps.tcl     block design (built from Tcl, not a .bd file)
+#   src/tb/*.sv              simulation sources
+#
+# Project top: pl_ps_wrapper for now. top.sv is empty until the HDMI path is
+# integrated; switch top_module to "top" then. src/bd/hdmi_rx is still empty
+# and is not added.
 # =============================================================================
 
 # ---- paths ------------------------------------------------------------------
@@ -21,8 +28,14 @@ set repo_root [file normalize $repo_root]
 
 set proj_name  "debris_tracking"
 set build_dir  $repo_root/build
-set part       "xczu5ev-sfvc784-1-e"       
+set part       "xczu5ev-sfvc784-1-e"
 set board_part "digilentinc.com:gzu_5ev:part0:1.1"
+set top_module "pl_ps_wrapper"
+
+# cca_top's label table size. 1024 doesn't route: the translator LUT and the
+# zeros table synthesize to flip-flops with 1024:1 read muxes. 256 matches
+# the 256-centroid BRAM slot and passes the full-HD golden suite.
+set cca_num_labels 256
 
 # ---- version guard ----------------------------------------------------------
 set required_version "2025.2"
@@ -30,7 +43,7 @@ if {[version -short] ne $required_version} {
     puts "WARNING: built with Vivado $required_version, running [version -short]"
 }
 
-# ---- board files --------------------------------------------------------
+# ---- board files ------------------------------------------------------------
 # MUST come before create_project.
 set_param board.repoPaths [list $repo_root/boards]
 
@@ -38,68 +51,39 @@ set_param board.repoPaths [list $repo_root/boards]
 file mkdir $build_dir
 create_project -force $proj_name $build_dir/$proj_name -part $part
 set_property board_part      $board_part    [current_project]
-set_property target_language Verilog  [current_project]
-set_property ip_output_repo  $build_dir/$proj_name/ip_cache [current_project]
+set_property target_language Verilog        [current_project]
 
 # ---- RTL --------------------------------------------------------------------
-# top.sv must exist before the BD sections below -- Add Module in each BD
-# resolves against modules already present in sources_1.
-set rtl_files [lsort [glob -nocomplain -directory $repo_root/src/hdl *.sv]]
+# Added before the block design: its module-reference cells (cca_top,
+# pattern_gen, sync_debouncer) resolve against modules in sources_1.
+set rtl_files [lsort [concat \
+    [glob -nocomplain -directory $repo_root/src/hdl *.sv] \
+    [glob -nocomplain -directory $repo_root/src/hdl *.v]]]
 add_files -norecurse -fileset sources_1 $rtl_files
-set_property file_type SystemVerilog [get_files *.sv]
+set sv_files [get_files -quiet -of_objects [get_filesets sources_1] *.sv]
+if {[llength $sv_files] > 0} {
+    set_property file_type SystemVerilog $sv_files
+}
+update_compile_order -fileset sources_1
 
 # ---- constraints ------------------------------------------------------------
-add_files -norecurse -fileset constrs_1 [list \
-    $repo_root/src/xdc/Genesys-ZU-5EV-D-Master.xdc 
-    # $repo_root/src/constraints/timing.xdc \
-]
-
-# ---- block designs ------------------------------------------------------
-# Each BD is created and lives permanently at src/bd/<name>/<name>.bd --
-# own directory referenced in place (like the .sv
-# files). Nothing to copy or export; the tracked file is the live file.
-#   pl_ps.bd    -- Zynq PS + AXI4-Lite BRAM controller  
-#   hdmi_rx.bd  -- HDMI RX + AXI-Stream master         
-#
-# Neither BD is set as project top -- both become sub-blocks instantiated
-# by top.sv.
-
-proc add_bd {repo_root name} {
-    set src_bd "$repo_root/src/bd/$name/$name.bd"
-    if {![file exists $src_bd]} {
-        puts "NOTE: no tracked .bd for $name yet, skipping"
-        return
-    }
-    add_files -norecurse -fileset sources_1 $src_bd
-
-    set bd_file [get_files -quiet -of_objects [get_filesets sources_1] "$name.bd"]
-    if {[llength $bd_file] != 1} {
-        error "expected exactly one BD file named $name.bd, got: $bd_file"
-    }
-
-    # The BD must be OPEN before generate_target works -- a referenced .bd
-    # that has only been added has no synthesis target, and make_wrapper
-    # reports that as a misleading "wrapper not supported for <language>".
-    open_bd_design $bd_file
-    if {[catch {generate_target all $bd_file} msg]} {
-        error "generate_target failed for $name: $msg"
-    }
-
-    # -top intentionally omitted: this BD is a sub-block, not project top.
-    set wrapper [make_wrapper -files $bd_file -top -force]
-    add_files -norecurse $wrapper
-
-    # Close so the next add_bd call doesn't act on the wrong current design.
-    close_bd_design [current_bd_design]
-    puts "Added BD $name -> wrapper $wrapper"
+set xdc_files [lsort [glob -nocomplain -directory $repo_root/src/xdc *.xdc]]
+if {[llength $xdc_files] > 0} {
+    add_files -norecurse -fileset constrs_1 $xdc_files
 }
 
-add_bd $repo_root "pl_ps"
-add_bd $repo_root "hdmi_rx"
+# ---- block design -----------------------------------------------------------
+source $repo_root/scripts/bd/pl_ps.tcl
+create_pl_ps $repo_root $cca_num_labels
 
-# ---- top / compile order -----------------------------------------------
-# top.sv (in src/hdl/) instantiates pl_ps_wrapper and hdmi_rx_wrapper.
-set_property top top [get_filesets sources_1]
+set bd_file [get_files pl_ps.bd]
+generate_target all $bd_file
+set wrapper [make_wrapper -files $bd_file -top -force]
+add_files -norecurse $wrapper
+close_bd_design [current_bd_design]
+
+# ---- top / compile order ----------------------------------------------------
+set_property top $top_module [get_filesets sources_1]
 update_compile_order -fileset sources_1
 
 # ---- simulation fileset -----------------------------------------------------
@@ -116,4 +100,4 @@ if {[llength $tb_files] > 0} {
     puts "NOTE: no testbenches in src/tb, skipping sim fileset"
 }
 
-puts "Project created at $build_dir/$proj_name/$proj_name.xpr"
+puts "Project created at $build_dir/$proj_name/$proj_name.xpr (top: $top_module, cca_top NUM_LABELS = $cca_num_labels)"

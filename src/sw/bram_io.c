@@ -53,6 +53,13 @@ const BramStats *bram_get_stats(void)
     return &stats;
 }
 
+uint32_t bram_peek(uint32_t word_index)
+{
+    if (word_index >= BRAM_NUM_SLOTS * BRAM_SLOT_WORDS)
+        return 0;
+    return bram[word_index];
+}
+
 // Slot holding the highest frame number, or -1 if every header is 0
 // (nothing written since reset -- the PS zeroes the BRAM at boot)
 static int newest_slot(uint32_t *frame_out)

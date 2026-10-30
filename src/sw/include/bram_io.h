@@ -58,4 +58,8 @@ int bram_read_frame(CentroidFrame *frame_out);
 
 const BramStats *bram_get_stats(void);
 
+// Raw BRAM word (0 .. BRAM_NUM_SLOTS * BRAM_SLOT_WORDS - 1) for debug dumps;
+// out-of-range indexes read as 0
+uint32_t bram_peek(uint32_t word_index);
+
 #endif // BRAM_IO_H
