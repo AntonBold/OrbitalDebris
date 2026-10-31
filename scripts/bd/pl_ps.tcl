@@ -76,13 +76,15 @@ proc create_pl_ps {repo_root cca_num_labels} {
         CONFIG.C_DOUT_DEFAULT 0x00000000] $gpio
 
     # util_vector_logic is being replaced by the inline-HDL ilvector_logic;
-    # use whichever this Vivado has (same parameters and pins)
+    # use whichever this Vivado has (same parameters and pins). Inline-HDL
+    # blocks are created with -type inline_hdl, not -type ip.
     set or_vlnv [lindex [get_ipdefs -all -filter {NAME == ilvector_logic}] end]
     if {$or_vlnv eq ""} {
         set or_vlnv [lindex [get_ipdefs -all -filter {NAME == util_vector_logic}] end]
     }
     if {$or_vlnv eq ""} { error "neither ilvector_logic nor util_vector_logic IP found" }
-    set enable_or [create_bd_cell -type ip -vlnv $or_vlnv enable_or]
+    set or_type [expr {[lindex [split $or_vlnv :] 1] eq "inline_hdl" ? "inline_hdl" : "ip"}]
+    set enable_or [create_bd_cell -type $or_type -vlnv $or_vlnv enable_or]
     set_property -dict [list CONFIG.C_OPERATION or CONFIG.C_SIZE 1] $enable_or
 
     # ---- RTL module references ----------------------------------------------
