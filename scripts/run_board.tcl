@@ -55,4 +55,4 @@ puts "PL programmed: $bit"
 
 dow $elf
 con
-puts "debris_app running: watch the serial terminal, press BTN2 (btn\[2\], pin B10) for a frame"
+puts "debris_app running: watch the serial terminal. FREE_RUN 1 in main.c streams frames on its own; with FREE_RUN 0, press BTN2 (btn\[2\], pin B10) for a frame"

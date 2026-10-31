@@ -1,0 +1,12 @@
+# Testbench: pattern_gen_move_tb (pattern_gen moving object -> cca_top -> BRAM; core in pattern_gen_move_env.sv)
+# Paths are relative to the repo root. One file per line; # starts a comment.
+src/tb/pattern_gen_move_tb.sv
+src/tb/pattern_gen_move_env.sv
+src/hdl/pattern_gen.sv
+src/hdl/cca_top.sv
+src/hdl/cca_control.sv
+src/hdl/ccl_decision.sv
+src/hdl/fifo.sv
+src/hdl/label_decision_logic.sv
+src/hdl/translator_lut.sv
+src/hdl/feature_extract.sv

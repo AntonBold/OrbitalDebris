@@ -4,9 +4,11 @@
 # Sourced by scripts/create_project.tcl after src/hdl is in sources_1. This
 # script, not a .bd file, is the source of truth for the block design.
 #
-#   button -> sync_debouncer -> pattern_gen -> cca_top -> BRAM port B
+#   button -> sync_debouncer -+-> OR -> pattern_gen -> cca_top -> BRAM port B
+#   axi_gpio (PS frame trigger) -+
 #   PS M_AXI_HPM0_FPD -> SmartConnect -> AXI BRAM ctrl (BRAM port A) @ 0xA000_0000
 #                                     -> axi_intc                    @ 0xA001_0000
+#                                     -> axi_gpio (frame trigger)    @ 0xA002_0000
 #   cca_top.o_interrupt -> axi_intc (rising edge) -> pl_ps_irq0 -> GIC
 #
 # cca_top, pattern_gen and sync_debouncer are module references: each build
@@ -39,7 +41,7 @@ proc create_pl_ps {repo_root cca_num_labels} {
 
     # ---- Xilinx IP ----------------------------------------------------------
     set smc [create_bd_cell -type ip -vlnv xilinx.com:ip:smartconnect:1.0 axi_smc]
-    set_property -dict [list CONFIG.NUM_SI 1 CONFIG.NUM_MI 2] $smc
+    set_property -dict [list CONFIG.NUM_SI 1 CONFIG.NUM_MI 3] $smc
 
     create_bd_cell -type ip -vlnv xilinx.com:ip:proc_sys_reset:5.0 rst_ps8_0_100M
 
@@ -63,12 +65,35 @@ proc create_pl_ps {repo_root cca_num_labels} {
         CONFIG.C_KIND_OF_EDGE.VALUE_SRC USER \
         CONFIG.C_KIND_OF_EDGE   0xFFFFFFFF] $intc
 
+    # Frame trigger from the PS, so frames can be started without the button
+    # (e.g. remotely). Bit 0 = pattern_gen i_enable: held at 1 the generator
+    # free-runs like live video (frame, blanking, frame, ...); 0 stops it
+    # after the current frame. ORed with the button's 1-cycle pulse.
+    set gpio [create_bd_cell -type ip -vlnv xilinx.com:ip:axi_gpio:2.0 axi_gpio_0]
+    set_property -dict [list \
+        CONFIG.C_GPIO_WIDTH   1 \
+        CONFIG.C_ALL_OUTPUTS  1 \
+        CONFIG.C_DOUT_DEFAULT 0x00000000] $gpio
+
+    # util_vector_logic is being replaced by the inline-HDL ilvector_logic;
+    # use whichever this Vivado has (same parameters and pins)
+    set or_vlnv [lindex [get_ipdefs -all -filter {NAME == ilvector_logic}] end]
+    if {$or_vlnv eq ""} {
+        set or_vlnv [lindex [get_ipdefs -all -filter {NAME == util_vector_logic}] end]
+    }
+    if {$or_vlnv eq ""} { error "neither ilvector_logic nor util_vector_logic IP found" }
+    set enable_or [create_bd_cell -type ip -vlnv $or_vlnv enable_or]
+    set_property -dict [list CONFIG.C_OPERATION or CONFIG.C_SIZE 1] $enable_or
+
     # ---- RTL module references ----------------------------------------------
     # A module reference's top file can't be SystemVerilog, so cca_top and
     # pattern_gen go through the Verilog shells src/hdl/*_bd.v.
     set cca [create_bd_cell -type module -reference cca_top_bd cca_top_0]
     set_property CONFIG.NUM_LABELS $cca_num_labels $cca
-    create_bd_cell -type module -reference pattern_gen_bd pattern_gen_0
+    # A 3x3 square that moves +4 px in x per frame, so the classifier has
+    # one moving spot against the static shapes
+    set pg [create_bd_cell -type module -reference pattern_gen_bd pattern_gen_0]
+    set_property CONFIG.MOVE_ENABLE 1 $pg
     create_bd_cell -type module -reference sync_debouncer sync_debouncer_0
 
     # Vivado infers clock/reset/interrupt pins on module references from
@@ -85,6 +110,7 @@ proc create_pl_ps {repo_root cca_num_labels} {
     connect_bd_intf_net [get_bd_intf_pins zynq_ultra_ps_e_0/M_AXI_HPM0_FPD] [get_bd_intf_pins axi_smc/S00_AXI]
     connect_bd_intf_net [get_bd_intf_pins axi_smc/M00_AXI] [get_bd_intf_pins axi_bram_ctrl_0/S_AXI]
     connect_bd_intf_net [get_bd_intf_pins axi_smc/M01_AXI] [get_bd_intf_pins axi_intc_0/s_axi]
+    connect_bd_intf_net [get_bd_intf_pins axi_smc/M02_AXI] [get_bd_intf_pins axi_gpio_0/S_AXI]
     connect_bd_intf_net [get_bd_intf_pins axi_bram_ctrl_0/BRAM_PORTA] [get_bd_intf_pins axi_bram_ctrl_0_bram/BRAM_PORTA]
 
     # ---- clock and resets ---------------------------------------------------
@@ -93,6 +119,7 @@ proc create_pl_ps {repo_root cca_num_labels} {
         [get_bd_pins axi_smc/aclk] \
         [get_bd_pins axi_bram_ctrl_0/s_axi_aclk] \
         [get_bd_pins axi_intc_0/s_axi_aclk] \
+        [get_bd_pins axi_gpio_0/s_axi_aclk] \
         [get_bd_pins rst_ps8_0_100M/slowest_sync_clk] \
         [get_bd_pins sync_debouncer_0/sys_clk] \
         [get_bd_pins pattern_gen_0/i_clk] \
@@ -101,14 +128,17 @@ proc create_pl_ps {repo_root cca_num_labels} {
     connect_bd_net [get_bd_pins rst_ps8_0_100M/peripheral_aresetn] \
         [get_bd_pins axi_smc/aresetn] \
         [get_bd_pins axi_bram_ctrl_0/s_axi_aresetn] \
-        [get_bd_pins axi_intc_0/s_axi_aresetn]
+        [get_bd_pins axi_intc_0/s_axi_aresetn] \
+        [get_bd_pins axi_gpio_0/s_axi_aresetn]
     connect_bd_net [get_bd_pins rst_ps8_0_100M/peripheral_reset] \
         [get_bd_pins pattern_gen_0/i_rst] \
         [get_bd_pins cca_top_0/rst]
 
     # ---- data path ----------------------------------------------------------
     connect_bd_net [get_bd_ports button] [get_bd_pins sync_debouncer_0/button]
-    connect_bd_net [get_bd_pins sync_debouncer_0/sync_deb_signal] [get_bd_pins pattern_gen_0/i_enable]
+    connect_bd_net [get_bd_pins sync_debouncer_0/sync_deb_signal] [get_bd_pins enable_or/Op1]
+    connect_bd_net [get_bd_pins axi_gpio_0/gpio_io_o] [get_bd_pins enable_or/Op2]
+    connect_bd_net [get_bd_pins enable_or/Res] [get_bd_pins pattern_gen_0/i_enable]
     foreach sig {tdata tvalid tuser tlast} {
         connect_bd_net [get_bd_pins pattern_gen_0/m_axis_$sig] [get_bd_pins cca_top_0/i_$sig]
     }
@@ -129,6 +159,8 @@ proc create_pl_ps {repo_root cca_num_labels} {
         [get_bd_addr_segs axi_bram_ctrl_0/S_AXI/Mem0] -force
     assign_bd_address -target_address_space $data -offset 0xA0010000 -range 64K \
         [get_bd_addr_segs axi_intc_0/S_AXI/Reg] -force
+    assign_bd_address -target_address_space $data -offset 0xA0020000 -range 64K \
+        [get_bd_addr_segs axi_gpio_0/S_AXI/Reg] -force
 
     validate_bd_design
 
@@ -149,6 +181,10 @@ and update the C_KIND_OF_INTR lines in scripts/bd/pl_ps.tcl."
         }
     }
     puts "zynq_ultra_ps_e_0 DDR: 8192 MBits x16 parts, 16 row bits, 1 bank-group bit"
+
+    set op [get_property CONFIG.C_OPERATION $enable_or]
+    if {$op ne "or"} { error "enable_or ($or_vlnv) C_OPERATION = '$op', expected 'or'" }
+    puts "enable_or: $or_vlnv, button OR axi_gpio_0 -> pattern_gen_0/i_enable"
 
     save_bd_design
 }
