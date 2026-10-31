@@ -4,9 +4,10 @@
 #   source <Vitis install>/settings64.sh      (puts vitis on PATH)
 #   vitis -s scripts/build_app.py             (from the repo root)
 #
-# Uses the tracked workspace in vitis/ and its debris_app component (sources
-# from src/sw, see vitis/debris_app/src/UserConfig.cmake). The platform
-# debris_platform must already exist and be built from build/pl_ps.xsa.
+# Rebuilds the debris_app component in the generated workspace vitis/
+# (sources from src/sw, see src/sw/vitis/UserConfig.cmake). Create the
+# workspace first with scripts/create_vitis.py, and re-create it after a new
+# build/pl_ps.xsa or a change to src/sw/vitis/.
 # Output: vitis/debris_app/build/debris_app.elf, which scripts/run_board.tcl
 # loads onto the board.
 # =============================================================================
