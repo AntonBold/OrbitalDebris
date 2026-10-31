@@ -34,7 +34,9 @@ set(USER_INCLUDE_DIRECTORIES
 #Example 1: Adding /proj/data/helloworld.c will pass /proj/data/helloworld.c
 #Example 2: Adding ../../common/helloworld.c will consider the path as relative to this component directory
 #Example 3: Adding ${MY_ENV}/data/helloworld.c are expanded using project-specific environment settings.
-# App sources live in src/sw (repo root = three levels up from here).
+# scripts/create_vitis.py copies this file to vitis/debris_app/src/, so paths
+# are relative to there. App sources live in src/sw (repo root = three levels
+# up from vitis/debris_app/src).
 # test_bram_io.c and test_harness.c are host tests with their own main().
 set(USER_COMPILE_SOURCES
 "${CMAKE_CURRENT_SOURCE_DIR}/../../../src/sw/main.c"
