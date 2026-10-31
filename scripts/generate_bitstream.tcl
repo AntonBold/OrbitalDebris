@@ -27,6 +27,15 @@ if {[current_project -quiet] eq ""} {
     open_project $xpr
 }
 
+# If create_project.tcl failed while building the block design, the project
+# has only the RTL and Vivado picks some module (e.g. cca_top_bd) as top;
+# implementing that fails at write_bitstream with unconstrained I/O.
+set top [get_property top [get_filesets sources_1]]
+if {$top ne "pl_ps_wrapper" || [get_files -quiet pl_ps.bd] eq ""} {
+    error "project top is '$top' and pl_ps.bd is [expr {[get_files -quiet pl_ps.bd] eq "" ? "missing" : "present"}]:\
+create_project.tcl did not finish. Check its log for the first ERROR, fix it, delete build/ and re-run it."
+}
+
 # synth_1 reset also resets impl_1
 reset_run synth_1
 launch_runs impl_1 -to_step write_bitstream -jobs $jobs
