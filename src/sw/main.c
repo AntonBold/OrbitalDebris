@@ -7,6 +7,7 @@
 #include "bram_debug.h"
 #include "telemetry.h"
 #include "xil_printf.h"
+#include "xil_io.h"
 
 // Each classified frame goes out as a binary telemetry packet on UART0 at
 // 921600 baud (docs/uart-telemetry.md; decode with scripts/telemetry_decode.py).
@@ -17,6 +18,14 @@
 // reader stats, interrupt count). The decoder shows those lines too, but
 // they're ~700 bytes a frame, so leave it off unless debugging.
 #define BRINGUP_PRINT 0
+
+// Frame trigger: axi_gpio_0 bit 0, ORed with the button into pattern_gen's
+// i_enable (docs/pl-ps_interface_spec.md, "Frame Trigger"). FREE_RUN 1 holds
+// it high once the interrupt is set up, so pattern_gen streams continuously
+// (~46 frames/s at 100 MHz: 1920x1080 pixels + 99,000 blanking cycles) with
+// no button press. FREE_RUN 0 leaves it low: one frame per button press.
+#define FRAME_TRIGGER_ADDR      0xA0020000u     // axi_gpio_0 GPIO_DATA
+#define FREE_RUN 1
 
 // Config --
 
@@ -49,6 +58,10 @@ int main(void)
     // First, before anything is printed: every byte after this is at 921600
     int tel_ok = (telemetry_uart_init() == 0);
 
+    // Stop the generator (after its current frame) before clearing the
+    // headers, in case a previous run left the trigger high
+    Xil_Out32(FRAME_TRIGGER_ADDR, 0);
+
     bram_init();
     bram_clear_headers();   // before the interrupt is enabled (see pl-ps spec, Reset)
 
@@ -65,6 +78,13 @@ int main(void)
                irq_ok ? "ok" : "FAILED", use_irq ? "waiting on interrupts" : "polling the BRAM");
     xil_printf("debris_app: telemetry %s\r\n", tel_ok ? "at 921600 baud" : "UART init FAILED, still at boot baud");
     bram_print_headers();
+
+#if FREE_RUN
+    Xil_Out32(FRAME_TRIGGER_ADDR, 1);
+    xil_printf("debris_app: free-running (frame trigger at 0x%08x held high)\r\n", FRAME_TRIGGER_ADDR);
+#else
+    xil_printf("debris_app: press BTN2 for a frame\r\n");
+#endif
 
     while(1) {
         if (use_irq) {

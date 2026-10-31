@@ -74,8 +74,10 @@ Real 1080p60 video has 45 lines of vertical blanking (≈ 99,000 pixel clocks at
 2200 clocks/line), so the inter-frame gap is met with a wide margin, provided
 the video pipeline passes blanking through as `tvalid` low rather than
 compressing frames back-to-back (e.g., via a frame buffer replaying at a higher
-rate). `pattern_gen` models this with its `VBLANK_LINES` parameter, and
-`cca_top_tb` flags any pixel that arrives while the module is busy.
+rate). `pattern_gen` models this: after every frame it holds `tvalid` low for
+`VBLANK_LINES × (WIDTH + H_BLANK)` cycles (default 45 × 2200 = 99,000), also
+when free-running with `i_enable` held high. `cca_top_tb` and
+`pattern_gen_vblank_tb` flag any pixel that arrives while the module is busy.
 
 ---
 

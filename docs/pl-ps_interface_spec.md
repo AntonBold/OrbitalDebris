@@ -2,7 +2,7 @@
 
 ## Orbital Debris Tracker — Centroid Handoff
 
-**Version:** 0.2  
+**Version:** 0.3  
 **Authors:** Adam Welsh 
 **Status:** Draft
 
@@ -162,10 +162,12 @@ still reads the newest frame.
 | AXI BRAM Controller       | PS read access to centroid BRAM |
 | Block Memory Generator    | The shared BRAM                 |
 | AXI Interrupt Controller  | Latches `cca_top.o_interrupt`, interrupts the PS GIC |
+| AXI GPIO (1-bit output)   | Frame trigger: PS-driven `pattern_gen` enable (see Frame Trigger) |
 
 The BRAM controller should be configured in **Simple** mode (not ECC).  
 BRAM base address: `0xA000_0000`  
-Interrupt controller address: `0xA001_0000`
+Interrupt controller address: `0xA001_0000`  
+Frame trigger (AXI GPIO) address: `0xA002_0000`
 
 AXI Interrupt Controller settings:
 
@@ -178,6 +180,22 @@ AXI Interrupt Controller settings:
 
 > The block design currently wires `o_interrupt` straight to `pl_ps_irq0`
 > through an `xlconcat`. It needs the `axi_intc` inserted between them.
+
+### Frame Trigger
+
+Bring-up only: it drives the test-pattern generator, which the HDMI input
+replaces. `axi_gpio_0` bit 0 (`GPIO_DATA`, offset `0x0`, reset value 0) is
+ORed with the debounced button pulse into `pattern_gen.i_enable`.
+
+| Write | Effect |
+| ----- | ------ |
+| `1` (held) | `pattern_gen` free-runs: frame, vertical blanking (45 lines × 2200 clocks = 99,000 cycles), frame, ... — about 46 frames/s at 100 MHz |
+| `0` | stops after the current frame and its blanking; the button still sends one frame per press |
+
+`i_enable` is only sampled while the generator is idle and at the end of a
+blanking period, so a button press during the ~1 ms of blanking after a frame
+is ignored. `src/sw/main.c` writes 0 at start-up and 1 once the interrupt is
+enabled (`FREE_RUN`).
 
 ---
 
@@ -266,3 +284,4 @@ These are tested as expected-fail cases in `src/tb/cca_directed_tb`:
 | ------- | ---------- | ------------- |
 | 0.1     | 2026-03-24 | Initial draft |
 | 0.2     | 2026-10-28 | Match the RTL: 1-cycle pulse latched by an edge-sensitive `axi_intc` (nothing cleared in the PL), frame-number/slot rules, reset, read window, `bram_read_frame()` behaviour, Limits |
+| 0.3     | 2026-10-30 | Frame trigger AXI GPIO at `0xA002_0000` (free-running test pattern without the button) |

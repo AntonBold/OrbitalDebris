@@ -21,8 +21,15 @@ module pattern_gen_bd #(
     parameter COLL_WIDTH     = 15,
     parameter COLL_HEIGHT    = 10,
     parameter COLL_THICKNESS = 3,
+    parameter MOVE_ENABLE    = 0,
+    parameter MOVE_X_START   = 300,
+    parameter MOVE_Y_START   = 60,
+    parameter MOVE_SIZE      = 3,
+    parameter MOVE_DX        = 4,
+    parameter MOVE_DY        = 0,
     parameter NUM_FRAMES     = 1,
-    parameter VBLANK_LINES   = 45
+    parameter VBLANK_LINES   = 45,
+    parameter H_BLANK        = 280
 )(
     input  wire       i_clk,
     input  wire       i_rst,
@@ -51,8 +58,15 @@ module pattern_gen_bd #(
         .COLL_WIDTH(COLL_WIDTH),
         .COLL_HEIGHT(COLL_HEIGHT),
         .COLL_THICKNESS(COLL_THICKNESS),
+        .MOVE_ENABLE(MOVE_ENABLE),
+        .MOVE_X_START(MOVE_X_START),
+        .MOVE_Y_START(MOVE_Y_START),
+        .MOVE_SIZE(MOVE_SIZE),
+        .MOVE_DX(MOVE_DX),
+        .MOVE_DY(MOVE_DY),
         .NUM_FRAMES(NUM_FRAMES),
-        .VBLANK_LINES(VBLANK_LINES)
+        .VBLANK_LINES(VBLANK_LINES),
+        .H_BLANK(H_BLANK)
     ) inst (
         .i_clk(i_clk),
         .i_rst(i_rst),
