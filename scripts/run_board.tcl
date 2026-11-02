@@ -9,8 +9,9 @@
 # .xsa (clocks, DDR, PS-PL interface), then the bitstream, then the app.
 #
 # Needs: board in JTAG boot mode and powered; build/pl_ps.xsa and the
-# bitstream (scripts/generate_bitstream.tcl); vitis/debris_app built. Open the serial
-# terminal (UART0, 115200) before running. Close Vitis's debug session
+# bitstream (scripts/generate_bitstream.tcl); vitis/debris_app built. Start
+# scripts/telemetry_decode.py (UART0, 921600 baud: the app switches to it
+# before its first print, docs/uart-telemetry.md) before running. Close Vitis's debug session
 # first so it isn't holding the JTAG cable.
 # =============================================================================
 
