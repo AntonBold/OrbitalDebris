@@ -89,7 +89,7 @@ Simulation results are printed by the testbenches, not saved as figures. Wavefor
 ### References and acknowledgements
 
 **Papers**
-- **Classification and tracking algorithm:** the advisor's paper (unpublished manuscript, `docs/future publication (1).pdf`). The MATLAB code in `original_matlab/` is an unmodified copy of `main.m`, `Tracker.m` and `DataReader.m` from [`nnategh/orbital-debris`](https://github.com/nnategh/orbital-debris) (MIT License, © 2019 Yasin Zamani). The C classifier and tracker in `src/sw/` are translated from it. **TODO:** confirm the advisor is fine with the manuscript being in this repo, given its access settings.
+- **Classification and tracking algorithm:** the advisor's paper (unpublished manuscript; not in this repo, ask the advisor for a copy). The MATLAB code in `original_matlab/` is an unmodified copy of `main.m`, `Tracker.m` and `DataReader.m` from [`nnategh/orbital-debris`](https://github.com/nnategh/orbital-debris) (MIT License, © 2019 Yasin Zamani). The C classifier and tracker in `src/sw/` are translated from it.
 - **CCA hardware:** Spagnolo, Perri & Corsonello, "An Efficient Hardware-Oriented Single-Pass Approach for Connected Component Analysis," *Sensors* 2019 (`docs/fpga-accelerator-paper.pdf`, open access).
 - **Golden-model flood fill:** standard connected-component labeling by flood fill. See Rosenfeld & Pfaltz, "Sequential Operations in Digital Picture Processing," *J. ACM* 13(4), 1966.
 
