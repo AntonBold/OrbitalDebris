@@ -46,7 +46,7 @@ To look at a branch: `git fetch` then `git switch <branch>`. On GitHub, use the 
 | `src/sw/` | PS application: BRAM reader, interrupt setup, classifier, Hungarian assignment, tracker, UART telemetry, host unit tests (`test_*.c`) and the dataset test harness (`test_harness.c`) | C |
 | `src/sw/vitis/` (`pl_ps`) | Vitis app config: source list (`UserConfig.cmake`) and linker script (`lscript.ld`, 2 MB stack) | CMake / ld |
 | `src/xdc/` | Pin constraints (Digilent master XDC) | XDC |
-| `src/bd/` | `pl_ps/pl_ps.bd`: snapshot of the PS/PL block design, superseded on `pl_ps` by `scripts/bd/pl_ps.tcl`. `hdmi_rx/hdmi_rx.bd`: HDMI RX block design, an empty placeholder except on `hdmi` | Vivado BD |
+| `src/bd/` | `hdmi_rx/hdmi_rx.bd`: HDMI RX block design, an empty placeholder except on `hdmi`. The PS/PL block design has no `.bd` here: `scripts/create_project.tcl` builds it from `scripts/bd/pl_ps.tcl` | Vivado BD |
 | `src/sim/` | QuestaSim/ModelSim run scripts | Tcl / sh |
 | `scripts/` | `create_project.tcl` and `simulate.sh` on all branches. On `pl_ps` only: build flow (`generate_bitstream.tcl`, `create_vitis.py`, `build_app.py`, `run_board.tcl`), block design (`bd/pl_ps.tcl`), regressions (`regress.sh`, `golden/`), telemetry decoder (`telemetry_decode.py`) | Tcl / Python / sh |
 | `compression_scripts/` | Converts grayscale video to the 1-bit-per-pixel format, and plays it back (own README) | Python |

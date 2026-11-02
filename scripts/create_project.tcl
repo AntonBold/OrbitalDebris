@@ -15,8 +15,8 @@
 #   src/tb/*.sv              simulation sources
 #
 # Project top: pl_ps_wrapper for now. top.sv is empty until the HDMI path is
-# integrated; switch top_module to "top" then. src/bd/hdmi_rx is still empty
-# and is not added.
+# integrated; switch top_module to "top" then. src/bd/hdmi_rx/hdmi_rx.bd is a
+# placeholder until the hdmi branch merges, and is not added.
 # =============================================================================
 
 # ---- paths ------------------------------------------------------------------
