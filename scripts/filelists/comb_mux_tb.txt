@@ -1,0 +1,4 @@
+# Testbench: comb_mux_tb
+# Paths are relative to the repo root. One file per line; # starts a comment.
+src/tb/comb_mux_tb.sv
+src/hdl/comb_mux.sv

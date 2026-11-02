@@ -11,7 +11,7 @@ module cca_control #(
     
     // Additional outputs for BRAM logic
     output logic o_frame_done,
-    output logic [23:0] o_frame_count,
+    output logic [22:0] o_frame_count,
 
     output logic o_first_row,
     output logic o_first_col,
@@ -33,7 +33,7 @@ typedef enum logic {
 
 state_t state, next_state;
 
-logic [23:0] frame_count;
+logic [22:0] frame_count;
 
 logic [$clog2(WIDTH)-1:0] row_counter;
 logic [$clog2(HEIGHT)-1:0] col_counter;
@@ -44,12 +44,16 @@ always_ff @(posedge i_clk) begin
         reg_was_prev_pixel_last <= 1'b0;
         frame_count <= '0;
     end
-    else if (i_tvalid) begin
-        reg_was_prev_pixel_last <= i_tlast;
-        
-        // Frame counting logic (increments on first pixel)
-        if (i_tuser) begin
-            if (frame_count != 24'hFFFFFF) begin
+    else begin
+        if (i_tvalid) begin
+            reg_was_prev_pixel_last <= i_tlast;
+        end
+
+        // Frame counting logic (increments when a frame finishes, so the
+        // header dump that follows sees this frame's number -- counting on
+        // tuser would let the next frame's first pixel bump it mid-dump)
+        if (o_frame_done) begin
+            if (frame_count != '1) begin
                 frame_count <= frame_count + 1'b1;
             end
         end
@@ -114,8 +118,9 @@ always_ff @(posedge i_clk) begin
         if (i_tvalid) begin
 
             if (i_tuser) begin
-                // start of  anew frame -- reset row and col counter
-                row_counter <= '0;
+                // start of a new frame -- the tuser pixel is (0,0), so the
+                // next pixel is x=1
+                row_counter <= 1;
                 col_counter <= '0;
             end
             else if (i_tlast) begin

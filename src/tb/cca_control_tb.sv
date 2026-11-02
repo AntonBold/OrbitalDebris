@@ -15,7 +15,7 @@ module cca_control_tb();
     logic first_row;
     logic first_col;
     logic frame_done;
-    logic [23:0] frame_count;
+    logic [22:0] frame_count;
     logic [10:0] x_coord;
     logic [10:0] y_coord;
     logic dump_complete;
@@ -61,9 +61,19 @@ module cca_control_tb();
     else $error("[%0t] SVA ERROR: first_col not high on TUSER", $time);
 
     // 2. first_col should be high on the first valid pixel after TLAST
+    // Goto repetition (tvalid[->1]) nested inside an implication crashes the
+    // simulator's elaboration, so track "last valid pixel had TLAST" in a flag.
+    logic prev_valid_was_last;
+    always_ff @(posedge clk) begin
+        if (rst)
+            prev_valid_was_last <= 1'b0;
+        else if (tvalid)
+            prev_valid_was_last <= tlast;
+    end
+
     property p_first_col_after_tlast;
         @(posedge clk) disable iff (rst)
-        (tvalid && tlast) |=> (tvalid[->1] |-> first_col);
+        (tvalid && prev_valid_was_last) |-> first_col;
     endproperty
     assert property (p_first_col_after_tlast) 
         $display("[%0t] SVA PASSED: first_col was high on the first valid pixel after TLAST", $time);

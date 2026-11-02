@@ -1,0 +1,4 @@
+# Testbench: label_decision_logic_tb
+# Paths are relative to the repo root. One file per line; # starts a comment.
+src/tb/label_decision_logic_tb.sv
+src/hdl/label_decision_logic.sv

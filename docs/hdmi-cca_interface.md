@@ -25,7 +25,7 @@ Everything in this document describes the **contract at the boundary only**. Nei
 | `s_axis_tlast`  | 1 bit  | in                                       | End of scan line                              |
 | `s_axis_tuser`  | 1 bit  | in                                       | Start of frame (asserted on first pixel only) |
 | `s_axis_aclk`   | —      | in                                       | Interface clock (see Clocking)                |
-| `s_axis_aresetn`| 1 bit  | in                                       | Active-low reset                              |
+| `rst`           | 1 bit  | in                                       | Active-high reset (driven by `proc_sys_reset` `peripheral_reset` in the block design) |
 
 **Note on `tdata` width:** the pixel value is logically 1 bit. It is carried in an 8-bit (1-byte) field because standard AXI4-Stream infrastructure IP (width converters, FIFOs) operates on byte granularity — sub-byte `TDATA` widths aren't a configurable option. This is a hardware constraint of the shared toolchain, not a design preference by either side.
 
@@ -57,6 +57,27 @@ This document intentionally does not pin an exact clock frequency (in MHz) or cl
 ## Backpressure
 
 Standard AXI4-Stream handshake (`tvalid`/`tready`) is retained for IP compatibility, but note: live HDMI video cannot be paused at the source. The video pipeline should not rely on `tready` deasserting as a normal flow-control mechanism — the Centroiding module is designed to always be ready to accept a pixel once video is flowing (see Clocking above). `tready` deassertion should be treated as an abnormal/error condition, not a routine backpressure path.
+
+---
+
+## Frame Timing
+
+Because `tready` is always high, the Centroiding module relies on idle time
+(`tvalid` low) at two points to do its per-frame housekeeping:
+
+| Gap | Minimum | Why |
+| --- | ------- | --- |
+| Reset released → first pixel | `NUM_LABELS` cycles (1024) | Translator LUT clears itself after reset is released; merges are ignored until it finishes |
+| Last pixel of a frame → first pixel of the next | `2 × NUM_LABELS + 2 × max centroids + ~16` cycles (≈ 2,600 for 1024 labels / 256 centroids; budget 3,000) | Feature Extract dumps to BRAM, and the TL and line buffer clear, before the next frame's pixels can be accepted |
+
+Real 1080p60 video has 45 lines of vertical blanking (≈ 99,000 pixel clocks at
+2200 clocks/line), so the inter-frame gap is met with a wide margin, provided
+the video pipeline passes blanking through as `tvalid` low rather than
+compressing frames back-to-back (e.g., via a frame buffer replaying at a higher
+rate). `pattern_gen` models this: after every frame it holds `tvalid` low for
+`VBLANK_LINES × (WIDTH + H_BLANK)` cycles (default 45 × 2200 = 99,000), also
+when free-running with `i_enable` held high. `cca_top_tb` and
+`pattern_gen_vblank_tb` flag any pixel that arrives while the module is busy.
 
 ---
 

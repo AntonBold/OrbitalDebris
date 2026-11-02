@@ -1,0 +1,4 @@
+# Testbench: translator_lut_tb
+# Paths are relative to the repo root. One file per line; # starts a comment.
+src/tb/translator_lut_tb.sv
+src/hdl/translator_lut.sv
