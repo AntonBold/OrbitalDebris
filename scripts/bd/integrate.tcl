@@ -18,7 +18,8 @@
 #   PS M_AXI_HPM0_FPD -> centroiding  (BRAM @ 0xA000_0000, axi_intc @ 0xA001_0000)
 #   pl_ps_irq0[2] = centroiding irq  (GIC ID 123)
 # hdmi only:
-#   PS M_AXI_HPM0_LPD -> hdmi_in      (RX SS @ 0x8000_0000, video PHY @ 0x8001_0000)
+#   PS M_AXI_HPM0_LPD -> hdmi_in      (RX SS @ 0x8000_0000, video PHY @ 0x8001_0000,
+#                                      axi_iic_0 @ 0x8002_0000 -> mux_scl/sda_io)
 #   pl_ps_irq0[0] = video PHY, [1] = HDMI RX
 # pattern only:
 #   button / axi_gpio (0xA002_0000) -> pattern_gen -> centroiding
@@ -160,6 +161,8 @@ proc build_hdmi_variant {clk_mhz} {
     }
     create_bd_intf_port -mode Master -vlnv xilinx.com:interface:iic_rtl:1.0 hdmi_rx_ddc
     connect_bd_intf_net [get_bd_intf_ports hdmi_rx_ddc] [get_bd_intf_pins hdmi_in/DDC]
+    create_bd_intf_port -mode Master -vlnv xilinx.com:interface:iic_rtl:1.0 mux
+    connect_bd_intf_net [get_bd_intf_ports mux] [get_bd_intf_pins hdmi_in/MUX_IIC]
 
     create_bd_intf_port -mode Master -vlnv xilinx.com:interface:uart_rtl:1.0 UART_CTL
     connect_bd_intf_net [get_bd_intf_ports UART_CTL] [get_bd_intf_pins zynq_ultra_ps_e_0/UART_1]

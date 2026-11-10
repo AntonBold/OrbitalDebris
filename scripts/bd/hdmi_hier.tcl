@@ -8,13 +8,17 @@
 #
 #   GTH lanes -> vid_phy_controller -> v_hdmi_rx_ss -> VIDEO_OUT (2 px/clk, 48 bit)
 #             -> axis_register_slice -> system_ila
-#   S_AXI -> SmartConnect -> v_hdmi_rx_ss (AXI-Lite), vid_phy_controller (AXI-Lite)
+#   S_AXI -> SmartConnect -> v_hdmi_rx_ss (AXI-Lite), vid_phy_controller (AXI-Lite),
+#                            axi_iic_0 -> MUX_IIC (board I2C mux 0x70 -> Si5342 jitter
+#                            cleaner, which feeds the recovered TMDS clock back to the GTH)
 #
 # rx_video_clk and link_clk stay recovered from the HDMI input, inside this
 # hierarchy. TODO (Anthony): threshold -> 2:1 converter after the register
 # slice, then expose M_AXIS_PIX (1 bit/px, docs/hdmi-cca_interface.md).
 #
-# Pins: clk, peripheral_aresetn, S_AXI, DDC, HDMI/GTH pads, vphy_irq, rx_irq.
+# Pins: clk, peripheral_aresetn, S_AXI, DDC, MUX_IIC, HDMI/GTH pads, vphy_irq, rx_irq.
+# axi_iic_0 settings are copied from Digilent's Genesys ZU HDMI demo; its
+# Si5342 LOL GPIO is TX-only (vphy tx_refclk_rdy) and is left out.
 # =============================================================================
 
 proc create_hdmi_hier {parent name clk_mhz} {
@@ -28,6 +32,7 @@ proc create_hdmi_hier {parent name clk_mhz} {
     create_bd_pin -dir I -type rst peripheral_aresetn
     create_bd_intf_pin -mode Slave  -vlnv xilinx.com:interface:aximm_rtl:1.0 S_AXI
     create_bd_intf_pin -mode Master -vlnv xilinx.com:interface:iic_rtl:1.0   DDC
+    create_bd_intf_pin -mode Master -vlnv xilinx.com:interface:iic_rtl:1.0   MUX_IIC
     create_bd_pin -dir I -from 2 -to 0 phy_rxn_in
     create_bd_pin -dir I -from 2 -to 0 phy_rxp_in
     create_bd_pin -dir I -type clk mgtrefclk0_pad_n_in
@@ -56,7 +61,11 @@ proc create_hdmi_hier {parent name clk_mhz} {
     set_vphy_drpclk $vphy $clk_mhz
 
     set smc [create_bd_cell -type ip -vlnv xilinx.com:ip:smartconnect:1.0 axi_smc]
-    set_property -dict [list CONFIG.NUM_SI 1 CONFIG.NUM_MI 2] $smc
+    set_property -dict [list CONFIG.NUM_SI 1 CONFIG.NUM_MI 3] $smc
+
+    # Polled by software (XIic_Send), so its interrupt is left unconnected
+    set iic [create_bd_cell -type ip -vlnv xilinx.com:ip:axi_iic:2.1 axi_iic_0]
+    set_property -dict [list CONFIG.IIC_FREQ_KHZ {100}] $iic
 
     set rs [create_bd_cell -type ip -vlnv xilinx.com:ip:axis_register_slice:1.1 axis_register_slice_0]
     set_property -dict [list \
@@ -85,7 +94,9 @@ proc create_hdmi_hier {parent name clk_mhz} {
     connect_bd_intf_net [get_bd_intf_pins S_AXI] [get_bd_intf_pins axi_smc/S00_AXI]
     connect_bd_intf_net [get_bd_intf_pins axi_smc/M00_AXI] [get_bd_intf_pins v_hdmi_rx_ss_0/S_AXI_CPU_IN]
     connect_bd_intf_net [get_bd_intf_pins axi_smc/M01_AXI] [get_bd_intf_pins vid_phy_controller_0/vid_phy_axi4lite]
+    connect_bd_intf_net [get_bd_intf_pins axi_smc/M02_AXI] [get_bd_intf_pins axi_iic_0/S_AXI]
     connect_bd_intf_net [get_bd_intf_pins DDC] [get_bd_intf_pins v_hdmi_rx_ss_0/DDC_OUT]
+    connect_bd_intf_net [get_bd_intf_pins MUX_IIC] [get_bd_intf_pins axi_iic_0/IIC]
     foreach ch {0 1 2} {
         connect_bd_intf_net [get_bd_intf_pins vid_phy_controller_0/vid_phy_rx_axi4s_ch$ch] \
                             [get_bd_intf_pins v_hdmi_rx_ss_0/LINK_DATA${ch}_IN]
@@ -98,6 +109,7 @@ proc create_hdmi_hier {parent name clk_mhz} {
     # ---- PS-supplied clock and reset: all on the one PL clock -----------------
     connect_bd_net [get_bd_pins clk] \
         [get_bd_pins axi_smc/aclk] \
+        [get_bd_pins axi_iic_0/s_axi_aclk] \
         [get_bd_pins v_hdmi_rx_ss_0/s_axi_cpu_aclk] \
         [get_bd_pins v_hdmi_rx_ss_0/s_axis_video_aclk] \
         [get_bd_pins vid_phy_controller_0/drpclk] \
@@ -108,6 +120,7 @@ proc create_hdmi_hier {parent name clk_mhz} {
         [get_bd_pins system_ila_0/clk]
     connect_bd_net [get_bd_pins peripheral_aresetn] \
         [get_bd_pins axi_smc/aresetn] \
+        [get_bd_pins axi_iic_0/s_axi_aresetn] \
         [get_bd_pins v_hdmi_rx_ss_0/s_axi_cpu_aresetn] \
         [get_bd_pins v_hdmi_rx_ss_0/s_axis_video_aresetn] \
         [get_bd_pins vid_phy_controller_0/vid_phy_axi4lite_aresetn] \
@@ -170,4 +183,6 @@ proc assign_hdmi_addresses {hier_name} {
         [get_bd_addr_segs $hier_name/v_hdmi_rx_ss_0/S_AXI_CPU_IN/Reg] -force
     assign_bd_address -target_address_space $data -offset 0x80010000 -range 64K \
         [get_bd_addr_segs $hier_name/vid_phy_controller_0/vid_phy_axi4lite/Reg] -force
+    assign_bd_address -target_address_space $data -offset 0x80020000 -range 64K \
+        [get_bd_addr_segs $hier_name/axi_iic_0/S_AXI/Reg] -force
 }
