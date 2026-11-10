@@ -18,6 +18,7 @@
 #   PS M_AXI_HPM0_FPD -> centroiding  (BRAM @ 0xA000_0000, axi_intc @ 0xA001_0000)
 #   pl_ps_irq0[2] = centroiding irq  (GIC ID 123)
 # hdmi only:
+#   pl_clk1 = 100 MHz -> video PHY drpclk only (fixed DRPCLK_FREQ, see hdmi_hier.tcl)
 #   PS M_AXI_HPM0_LPD -> hdmi_in      (RX SS @ 0x8000_0000, video PHY @ 0x8001_0000,
 #                                      axi_iic_0 @ 0x8002_0000 -> mux_scl/sda_io)
 #   pl_ps_irq0[0] = video PHY, [1] = HDMI RX
@@ -44,6 +45,7 @@ proc create_integrate {repo_root cca_num_labels variant clk_mhz} {
     # changes below aren't fought by stale copies.
     set base [dict remove $pl_ps_zynq_config \
         CONFIG.PSU__CRL_APB__PL0_REF_CTRL__ACT_FREQMHZ \
+        CONFIG.PSU__CRL_APB__PL1_REF_CTRL__ACT_FREQMHZ \
         CONFIG.PSU__PROTECTION__SLAVES \
         CONFIG.PSU__PROTECTION__MASTERS]
     set_property -dict $base $ps
@@ -52,6 +54,9 @@ proc create_integrate {repo_root cca_num_labels variant clk_mhz} {
     if {$variant eq "hdmi"} {
         # From Anthony's design: HPM0_LPD for HDMI control, UART1 and GPIO on EMIO
         set_property -dict [list \
+            CONFIG.PSU__FPGA_PL1_ENABLE {1} \
+            CONFIG.PSU__CRL_APB__PL1_REF_CTRL__FREQMHZ {100} \
+            CONFIG.PSU__CRL_APB__PL1_REF_CTRL__SRCSEL {IOPLL} \
             CONFIG.PSU__USE__M_AXI_GP2 {1} \
             CONFIG.PSU__MAXIGP2__DATA_WIDTH {32} \
             CONFIG.PSU__UART1__PERIPHERAL__ENABLE {1} \
@@ -123,7 +128,7 @@ proc create_integrate {repo_root cca_num_labels variant clk_mhz} {
 
     # ---- checks -------------------------------------------------------------
     check_centroid_hier centroiding
-    if {$variant eq "hdmi"} { check_hdmi_hier hdmi_in $clk_mhz }
+    if {$variant eq "hdmi"} { check_hdmi_hier hdmi_in 100 }
     foreach {param want} $ddr_config {
         set got [get_property $param $ps]
         if {$got ne $want} { error "zynq_ultra_ps_e_0 $param = '$got', expected '$want' (DDR4 on the Genesys ZU)" }
@@ -141,6 +146,7 @@ proc build_hdmi_variant {clk_mhz} {
     connect_bd_intf_net [get_bd_intf_pins zynq_ultra_ps_e_0/M_AXI_HPM0_FPD] [get_bd_intf_pins centroiding/S_AXI]
     create_hdmi_hier / hdmi_in $clk_mhz
     connect_bd_intf_net [get_bd_intf_pins zynq_ultra_ps_e_0/M_AXI_HPM0_LPD] [get_bd_intf_pins hdmi_in/S_AXI]
+    connect_bd_net [get_bd_pins zynq_ultra_ps_e_0/pl_clk1] [get_bd_pins hdmi_in/drpclk]
 
     foreach {port pin dir type} {
         phy_rxn_in_0          phy_rxn_in          I {}

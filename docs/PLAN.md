@@ -5,7 +5,7 @@ Demo: 2026-12-11. Req IDs → https://claude.ai/artifact/Qs3cKKW3BTtnfsy52Njzy5.
 ## Decisions
 
 - **1080p30.** 60 fps needs ≥124.6 MHz; Fmax is ~85 MHz.
-- **One 75 MHz PL clock (`pl_clk0`; `pl_clk2` disabled) for everything, no 100 MHz:** RX video and control, video PHY, threshold, converter, SmartConnect, centroiding. No user clock-domain crossings; the RX bridge handles `rx_video_clk` → 75 MHz.
+- **One 75 MHz PL clock (`pl_clk0`; `pl_clk2` disabled) for everything except the video PHY DRP clock (`pl_clk1`, 100 MHz, fixed by the IP, used only inside it):** RX video and control, video PHY, threshold, converter, SmartConnect, centroiding. No user clock-domain crossings; the RX bridge handles `rx_video_clk` → 75 MHz.
 - **Centroiding = block-design hierarchy built by a Tcl proc:** `cca_top`, BRAM, BRAM controller, `axi_intc`. Ports: 1-bit AXI4-Stream in, clock, reset, AXI slave, IRQ out.
 - **`pattern_gen` stays out of the hierarchy.** Fallback = `pre-hdmi-75mhz` bitstream.
 - `NUM_LABELS` = 256.

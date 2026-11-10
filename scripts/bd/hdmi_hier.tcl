@@ -3,6 +3,10 @@
 #
 # create_hdmi_hier <parent> <name> <clk_mhz>
 #
+# Exception: the video PHY's drpclk comes from its own pin (100 MHz, pl_clk1).
+# Its DRPCLK_FREQ parameter is fixed at the 100 MHz default and can't be set,
+# and it must match the real DRP clock. It's used only inside the video PHY.
+#
 # Built from Anthony's design (scripts/hdmi_rx_export.tcl), with every
 # PS-supplied clock on the one PL clock (<clk_mhz>, D5 in docs/PLAN.md):
 #
@@ -16,7 +20,7 @@
 # hierarchy. TODO (Anthony): threshold -> 2:1 converter after the register
 # slice, then expose M_AXIS_PIX (1 bit/px, docs/hdmi-cca_interface.md).
 #
-# Pins: clk, peripheral_aresetn, S_AXI, DDC, MUX_IIC, HDMI/GTH pads, vphy_irq, rx_irq.
+# Pins: clk, drpclk, peripheral_aresetn, S_AXI, DDC, MUX_IIC, HDMI/GTH pads, vphy_irq, rx_irq.
 # axi_iic_0 settings are copied from Digilent's Genesys ZU HDMI demo; its
 # Si5342 LOL GPIO is TX-only (vphy tx_refclk_rdy) and is left out.
 # =============================================================================
@@ -29,6 +33,7 @@ proc create_hdmi_hier {parent name clk_mhz} {
 
     # ---- hierarchy pins -----------------------------------------------------
     create_bd_pin -dir I -type clk clk
+    create_bd_pin -dir I -type clk drpclk
     create_bd_pin -dir I -type rst peripheral_aresetn
     create_bd_intf_pin -mode Slave  -vlnv xilinx.com:interface:aximm_rtl:1.0 S_AXI
     create_bd_intf_pin -mode Master -vlnv xilinx.com:interface:iic_rtl:1.0   DDC
@@ -111,7 +116,6 @@ proc create_hdmi_hier {parent name clk_mhz} {
         [get_bd_pins axi_iic_0/s_axi_aclk] \
         [get_bd_pins v_hdmi_rx_ss_0/s_axi_cpu_aclk] \
         [get_bd_pins v_hdmi_rx_ss_0/s_axis_video_aclk] \
-        [get_bd_pins vid_phy_controller_0/drpclk] \
         [get_bd_pins vid_phy_controller_0/vid_phy_axi4lite_aclk] \
         [get_bd_pins vid_phy_controller_0/vid_phy_sb_aclk] \
         [get_bd_pins vid_phy_controller_0/vid_phy_tx_axi4s_aclk] \
@@ -126,6 +130,8 @@ proc create_hdmi_hier {parent name clk_mhz} {
         [get_bd_pins vid_phy_controller_0/vid_phy_sb_aresetn] \
         [get_bd_pins axis_register_slice_0/aresetn] \
         [get_bd_pins system_ila_0/resetn]
+
+    connect_bd_net [get_bd_pins drpclk] [get_bd_pins vid_phy_controller_0/drpclk]
 
     # ---- recovered clocks (from the HDMI input, not the PS) -------------------
     connect_bd_net [get_bd_pins vid_phy_controller_0/rx_video_clk] [get_bd_pins v_hdmi_rx_ss_0/video_clk]
@@ -157,14 +163,13 @@ proc create_hdmi_hier {parent name clk_mhz} {
     return $hier
 }
 
-# DRPCLK_FREQ is derived from the drpclk pin's clock during validation (it
-# can't be set by hand). Call after validate_bd_design: it must match the one
-# PL clock, or the video PHY's clock detector and timers are off.
-proc check_hdmi_hier {hier_name clk_mhz} {
+# DRPCLK_FREQ can't be set by hand; it must match the clock on drpclk.
+# Call after validate_bd_design.
+proc check_hdmi_hier {hier_name drp_mhz} {
     set vphy [get_bd_cells $hier_name/vid_phy_controller_0]
     set f [get_property CONFIG.DRPCLK_FREQ $vphy]
-    if {abs($f - $clk_mhz) > 0.5} {
-        error "$hier_name/vid_phy_controller_0 DRPCLK_FREQ = $f MHz, expected $clk_mhz"
+    if {abs($f - $drp_mhz) > 0.5} {
+        error "$hier_name/vid_phy_controller_0 DRPCLK_FREQ = $f MHz, but drpclk is $drp_mhz MHz"
     }
     puts "$hier_name/vid_phy_controller_0 DRPCLK_FREQ = $f MHz"
 }
