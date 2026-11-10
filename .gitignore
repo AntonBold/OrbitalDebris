@@ -95,3 +95,6 @@ vsim.wlf
 # Python bytecode
 __pycache__/
 *.pyc
+
+# HDMI Vitis build
+hdmi_vitis_build

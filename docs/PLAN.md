@@ -5,7 +5,7 @@ Demo: 2026-12-11. Req IDs → https://claude.ai/artifact/Qs3cKKW3BTtnfsy52Njzy5.
 ## Decisions
 
 - **1080p30.** 60 fps needs ≥124.6 MHz; Fmax is ~85 MHz.
-- **One 75 MHz PL clock for everything, no 100 MHz:** RX video and control, video PHY, threshold, converter, SmartConnect, centroiding. No user clock-domain crossings; the RX bridge handles `rx_video_clk` → 75 MHz.
+- **One 75 MHz PL clock (`pl_clk0`; `pl_clk2` disabled) for everything, no 100 MHz:** RX video and control, video PHY, threshold, converter, SmartConnect, centroiding. No user clock-domain crossings; the RX bridge handles `rx_video_clk` → 75 MHz.
 - **Centroiding = block-design hierarchy built by a Tcl proc:** `cca_top`, BRAM, BRAM controller, `axi_intc`. Ports: 1-bit AXI4-Stream in, clock, reset, AXI slave, IRQ out.
 - **`pattern_gen` stays out of the hierarchy.** Fallback = `pre-hdmi-75mhz` bitstream.
 - `NUM_LABELS` = 256.
@@ -19,7 +19,6 @@ Demo: 2026-12-11. Req IDs → https://claude.ai/artifact/Qs3cKKW3BTtnfsy52Njzy5.
 
 - [ ] D2: threshold method and value (Adam + Anthony)
 - [ ] D4: owner of the start-of-frame gate (OUT-4) and error flag (OUT-6)
-- [ ] D5: keep `pl_clk0` or `pl_clk2`; disable the other
 
 ## Phase 0 — blockers (Nov 9–12)
 
@@ -27,10 +26,9 @@ Exit: all pass, or re-plan.
 
 - [ ] (Anthony) INT-4: licence allows `write_bitstream`, valid past Dec 11
 - [ ] (Anthony) SRC-1/2/3: EDID offers 1080p30 only; hot-plug toggled; driver log shows 2200×1125 progressive RGB
-- [ ] (Anthony) CLK-1: PL clock = 75.000 MHz (Actual Frequency); HDMI IP clock settings + BSP updated; RX still locks. If not → tell Adam
+- [ ] (Anthony) CLK-1: `pl_clk0` = 75.000 MHz, `pl_clk2` disabled, its 4 loads moved to `pl_clk0` (Actual Frequency); HDMI IP clock settings + BSP updated; RX still locks. If not → tell Adam
 - [ ] (Adam) Find why the TL isn't LUTRAM (`synth_1/runme.log`, `mem_reg`)
 - [ ] (Adam) Out-of-context `cca_top` at 13.333 ns: WNS, WHS, worst endpoint
-- [ ] (Adam) D5
 
 ## Phase 1 — each side separately (Nov 12–18)
 
