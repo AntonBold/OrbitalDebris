@@ -44,6 +44,13 @@ int hdmi_rx_init(XScuGic *gic) { (void)gic; return 0; }
 // EMIO GPIO pins start at 78 on Zynq UltraScale+.
 #define MUX_RST_EMIO_PIN    78
 
+// The XPAR_FABRIC_*_INTR macros in this (SDT) xparameters.h are SPI numbers
+// (vphy 89, RX 90, centroiding axi_intc 91); the GIC driver takes interrupt
+// IDs, which are SPI + 32 (121, 122, 123 -- interrupt.h uses 123).
+#define GIC_ID(spi)         ((spi) + 32U)
+#define RX_GIC_ID           GIC_ID(XPAR_FABRIC_XV_HDMIRXSS_0_INTR)
+#define VPHY_GIC_ID         GIC_ID(XPAR_FABRIC_XVPHY_0_INTR)
+
 static XV_HdmiRxSs rxss;
 static XVphy       vphy;
 #if HDMI_RX_SETUP_SI5342
@@ -187,11 +194,11 @@ int hdmi_rx_init(XScuGic *gic)
         xil_printf("hdmi_rx: RX subsystem init failed (%d)\r\n", status);
         return status;
     }
-    status = XScuGic_Connect(gic, XPAR_FABRIC_XV_HDMIRXSS_0_INTR,
+    status = XScuGic_Connect(gic, RX_GIC_ID,
                              (Xil_InterruptHandler)XV_HdmiRxSS_HdmiRxIntrHandler, &rxss);
     if (status != XST_SUCCESS)
         return status;
-    XScuGic_Enable(gic, XPAR_FABRIC_XV_HDMIRXSS_0_INTR);
+    XScuGic_Enable(gic, RX_GIC_ID);
 
     XV_HdmiRxSs_SetCallback(&rxss, XV_HDMIRXSS_HANDLER_CONNECT,      (void *)rx_connect_cb,         &rxss);
     XV_HdmiRxSs_SetCallback(&rxss, XV_HDMIRXSS_HANDLER_BRDGOVERFLOW, (void *)rx_bridge_overflow_cb, &rxss);
@@ -203,7 +210,7 @@ int hdmi_rx_init(XScuGic *gic)
     XVphy_Config *vcfg = XVphy_LookupConfig(XPAR_XVPHY_0_BASEADDR);
     if (vcfg == NULL)
         return XST_DEVICE_NOT_FOUND;
-    status = XScuGic_Connect(gic, XPAR_FABRIC_XVPHY_0_INTR,
+    status = XScuGic_Connect(gic, VPHY_GIC_ID,
                              (Xil_InterruptHandler)XVphy_InterruptHandler, &vphy);
     if (status != XST_SUCCESS)
         return status;
@@ -212,7 +219,7 @@ int hdmi_rx_init(XScuGic *gic)
         xil_printf("hdmi_rx: video PHY init failed (%d)\r\n", status);
         return status;
     }
-    XScuGic_Enable(gic, XPAR_FABRIC_XVPHY_0_INTR);
+    XScuGic_Enable(gic, VPHY_GIC_ID);
 
     XVphy_SetHdmiCallback(&vphy, XVPHY_HDMI_HANDLER_RXINIT,  (void *)vphy_rx_init_cb,  &vphy);
     XVphy_SetHdmiCallback(&vphy, XVPHY_HDMI_HANDLER_RXREADY, (void *)vphy_rx_ready_cb, &vphy);
