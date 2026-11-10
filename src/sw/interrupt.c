@@ -45,6 +45,11 @@ static void frame_isr(void *callback_ref)
     frame_irq_count++;
 }
 
+void *interrupt_gic(void)
+{
+    return &gic;
+}
+
 int interrupt_init(void)
 {
     int status;

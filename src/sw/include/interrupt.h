@@ -33,4 +33,8 @@ extern volatile uint32_t frame_irq_count;
 // Returns 0 on success, nonzero if a driver call failed.
 int interrupt_init(void);
 
+// The GIC instance set up by interrupt_init(), for other drivers' handlers
+// (src/sw/hdmi/hdmi_rx.c). Valid only after interrupt_init() succeeds.
+void *interrupt_gic(void);
+
 #endif // INTERRUPT_H

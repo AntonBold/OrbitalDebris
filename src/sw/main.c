@@ -8,6 +8,8 @@
 #include "telemetry.h"
 #include "xil_printf.h"
 #include "xil_io.h"
+#include "xparameters.h"
+#include "hdmi/hdmi_rx.h"
 
 // Each classified frame goes out as a binary telemetry packet on UART0 at
 // 921600 baud (docs/uart-telemetry.md; decode with scripts/telemetry_decode.py).
@@ -24,7 +26,15 @@
 // it high once the interrupt is set up, so pattern_gen streams continuously
 // (~46 frames/s at 100 MHz: 1920x1080 pixels + 99,000 blanking cycles) with
 // no button press. FREE_RUN 0 leaves it low: one frame per button press.
+// The HDMI build (scripts/bd/integrate.tcl, variant hdmi) has no axi_gpio_0:
+// writing there would hit an unmapped address, so the trigger only exists
+// when the platform has it.
 #define FRAME_TRIGGER_ADDR      0xA0020000u     // axi_gpio_0 GPIO_DATA
+#ifdef XPAR_XGPIO_0_BASEADDR
+#define HAS_FRAME_TRIGGER 1
+#else
+#define HAS_FRAME_TRIGGER 0
+#endif
 #define FREE_RUN 1
 
 // Config --
@@ -60,7 +70,9 @@ int main(void)
 
     // Stop the generator (after its current frame) before clearing the
     // headers, in case a previous run left the trigger high
+#if HAS_FRAME_TRIGGER
     Xil_Out32(FRAME_TRIGGER_ADDR, 0);
+#endif
 
     bram_init();
     bram_clear_headers();   // before the interrupt is enabled (see pl-ps spec, Reset)
@@ -79,7 +91,15 @@ int main(void)
     xil_printf("debris_app: telemetry %s\r\n", tel_ok ? "at 921600 baud" : "UART init FAILED, still at boot baud");
     bram_print_headers();
 
-#if FREE_RUN
+    // HDMI build: bring up the RX (Si5342, video PHY, RX subsystem, EDID)
+    if (hdmi_rx_present()) {
+        if (!irq_ok || hdmi_rx_init((XScuGic *)interrupt_gic()) != 0)
+            xil_printf("debris_app: HDMI RX init FAILED\r\n");
+    }
+
+#if !HAS_FRAME_TRIGGER
+    xil_printf("debris_app: frames come from HDMI\r\n");
+#elif FREE_RUN
     Xil_Out32(FRAME_TRIGGER_ADDR, 1);
     xil_printf("debris_app: free-running (frame trigger at 0x%08x held high)\r\n", FRAME_TRIGGER_ADDR);
 #else

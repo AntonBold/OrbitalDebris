@@ -28,6 +28,7 @@ set(USER_UNDEFINED_SYMBOLS
 
 set(USER_INCLUDE_DIRECTORIES
 "${CMAKE_CURRENT_SOURCE_DIR}/../../../src/sw/include"
+"${CMAKE_CURRENT_SOURCE_DIR}/../../../src/sw/hdmi"
 )
 
 #Add any source below, they will be added as Compile sources.
@@ -49,6 +50,8 @@ set(USER_COMPILE_SOURCES
 "${CMAKE_CURRENT_SOURCE_DIR}/../../../src/sw/geometry.c"
 "${CMAKE_CURRENT_SOURCE_DIR}/../../../src/sw/hungarian.c"
 "${CMAKE_CURRENT_SOURCE_DIR}/../../../src/sw/track.c"
+"${CMAKE_CURRENT_SOURCE_DIR}/../../../src/sw/hdmi/hdmi_rx.c"
+"${CMAKE_CURRENT_SOURCE_DIR}/../../../src/sw/hdmi/si5432_axi.c"
 )
 
 # -----------------------------------------
