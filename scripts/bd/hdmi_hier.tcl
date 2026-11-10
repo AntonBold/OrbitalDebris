@@ -58,7 +58,6 @@ proc create_hdmi_hier {parent name clk_mhz} {
         CONFIG.C_Rx_Protocol {HDMI} \
         CONFIG.C_TX_REFCLK_SEL {0} \
         CONFIG.C_Tx_Protocol {HDMI}] $vphy
-    set_vphy_drpclk $vphy $clk_mhz
 
     set smc [create_bd_cell -type ip -vlnv xilinx.com:ip:smartconnect:1.0 axi_smc]
     set_property -dict [list CONFIG.NUM_SI 1 CONFIG.NUM_MI 3] $smc
@@ -158,23 +157,16 @@ proc create_hdmi_hier {parent name clk_mhz} {
     return $hier
 }
 
-# The video PHY's DRP clock frequency is a manual IP setting (it isn't
-# propagated from the clock pin) and must match the real drpclk. The
-# parameter name isn't pinned down here, so find it and print what was set.
-proc set_vphy_drpclk {vphy clk_mhz} {
-    set props [lsearch -all -inline -nocase [list_property $vphy] *DRPCLK*FREQ*]
-    if {[llength $props] == 0} {
-        puts "WARNING: no DRPCLK frequency parameter on [get_property NAME $vphy];\
-set the DRP clock to $clk_mhz MHz in the vid_phy_controller GUI and copy the CONFIG line here"
-        return
+# DRPCLK_FREQ is derived from the drpclk pin's clock during validation (it
+# can't be set by hand). Call after validate_bd_design: it must match the one
+# PL clock, or the video PHY's clock detector and timers are off.
+proc check_hdmi_hier {hier_name clk_mhz} {
+    set vphy [get_bd_cells $hier_name/vid_phy_controller_0]
+    set f [get_property CONFIG.DRPCLK_FREQ $vphy]
+    if {abs($f - $clk_mhz) > 0.5} {
+        error "$hier_name/vid_phy_controller_0 DRPCLK_FREQ = $f MHz, expected $clk_mhz"
     }
-    foreach p $props {
-        set was [get_property $p $vphy]
-        # Hz or MHz, depending on how the IP stores it
-        set want [expr {$was > 1000000 ? int($clk_mhz * 1000000) : $clk_mhz}]
-        set_property $p $want $vphy
-        puts "[get_property NAME $vphy] $p: $was -> [get_property $p $vphy]"
-    }
+    puts "$hier_name/vid_phy_controller_0 DRPCLK_FREQ = $f MHz"
 }
 
 proc assign_hdmi_addresses {hier_name} {

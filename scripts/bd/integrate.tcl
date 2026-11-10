@@ -123,6 +123,7 @@ proc create_integrate {repo_root cca_num_labels variant clk_mhz} {
 
     # ---- checks -------------------------------------------------------------
     check_centroid_hier centroiding
+    if {$variant eq "hdmi"} { check_hdmi_hier hdmi_in $clk_mhz }
     foreach {param want} $ddr_config {
         set got [get_property $param $ps]
         if {$got ne $want} { error "zynq_ultra_ps_e_0 $param = '$got', expected '$want' (DDR4 on the Genesys ZU)" }
