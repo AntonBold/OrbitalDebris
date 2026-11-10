@@ -19,11 +19,20 @@ int hdmi_rx_init(XScuGic *gic) { (void)gic; return 0; }
 #include "xil_printf.h"
 #include "sleep.h"
 #include "xiic.h"
+// The Si5342 (behind the mux) only clocks the TX side; RX locks without it
+// (Anthony's bring-up app). Off by default: the mux didn't ACK in the first
+// integrated build, and RX doesn't need it.
+#ifndef HDMI_RX_SETUP_SI5342
+#define HDMI_RX_SETUP_SI5342 0
+#endif
+
+#if HDMI_RX_SETUP_SI5342
 #include "xgpiops.h"
+#include "si5432_axi.h"
+#endif
 #include "xv_hdmirxss.h"
 #include "xvphy.h"
 #include "xvidc.h"
-#include "si5432_axi.h"
 #include "hdmi_edid_1080p30.h"
 
 // Board I2C (axi_iic_0 -> mux_scl/sda_io): TCA9548-style mux at 0x70; the
@@ -37,7 +46,9 @@ int hdmi_rx_init(XScuGic *gic) { (void)gic; return 0; }
 
 static XV_HdmiRxSs rxss;
 static XVphy       vphy;
+#if HDMI_RX_SETUP_SI5342
 static XGpioPs     gpio;
+#endif
 
 // ---- RX subsystem callbacks (interrupt context) ------------------------------
 
@@ -124,6 +135,7 @@ static void vphy_error_cb(void *ref)
 
 // ---- board clocking ------------------------------------------------------------
 
+#if HDMI_RX_SETUP_SI5342
 // Release the I2C mux reset, select the Si5342, and load the demo's
 // jitter-attenuator configuration into it
 static int board_clock_init(void)
@@ -149,6 +161,7 @@ static int board_clock_init(void)
         I2C_SI5342_ADDR, si5342_revd_registers_jitteratt, SI5342_REVD_REG_CONFIG_NUM_REGS);
     return XST_SUCCESS;
 }
+#endif
 
 // ---- public ----------------------------------------------------------------------
 
@@ -158,9 +171,11 @@ int hdmi_rx_init(XScuGic *gic)
 {
     int status;
 
+#if HDMI_RX_SETUP_SI5342
     xil_printf("hdmi_rx: configuring Si5342...\r\n");
     if (board_clock_init() != XST_SUCCESS)
-        return XST_FAILURE;
+        xil_printf("hdmi_rx: Si5342 setup failed, continuing (RX doesn't need it)\r\n");
+#endif
 
     // RX subsystem (before the video PHY: the PHY's RX init calls back into it)
     XV_HdmiRxSs_SetEdidParam(&rxss, (u8 *)hdmi_edid_1080p30, sizeof(hdmi_edid_1080p30));
@@ -203,7 +218,17 @@ int hdmi_rx_init(XScuGic *gic)
     XVphy_SetHdmiCallback(&vphy, XVPHY_HDMI_HANDLER_RXREADY, (void *)vphy_rx_ready_cb, &vphy);
     XVphy_SetErrorCallback(&vphy, (void *)vphy_error_cb, &vphy);
 
-    xil_printf("hdmi_rx: ready, waiting for a source (EDID offers 1080p30 only)\r\n");
+    // Drop hot-plug for 500 ms so the source re-reads the EDID (what
+    // Anthony's working bring-up app does; demo SetHdmiRxHpd)
+    XVphy_MmcmPowerDown(&vphy, 0, XVPHY_DIR_RX, FALSE);
+    XVphy_Clkout1OBufTdsEnable(&vphy, XVPHY_DIR_RX, FALSE);
+    XVphy_IBufDsEnable(&vphy, 0, XVPHY_DIR_RX, FALSE);
+    XV_HdmiRxSs_Stop(&rxss);
+    usleep(500000);
+    XV_HdmiRxSs_Start(&rxss);
+    XVphy_IBufDsEnable(&vphy, 0, XVPHY_DIR_RX, TRUE);
+
+    xil_printf("hdmi_rx: ready, hot-plug toggled, waiting for a source (EDID offers 1080p30 only)\r\n");
     return XST_SUCCESS;
 }
 
