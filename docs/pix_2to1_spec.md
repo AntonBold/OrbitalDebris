@@ -1,6 +1,6 @@
 # 2:1 Pixel Converter Specification
 
-**Version:** 0.1 (2026-11-09) · **Owner:** Adam · **Module:** `src/hdl/pix_2to1.sv` (BD shell `src/hdl/pix_2to1_bd.v`)
+**Version:** 0.2 (2026-11-10) · **Owner:** Adam · **Module:** `src/hdl/pix_2to1.sv` (BD shell `src/hdl/pix_2to1_bd.v`)
 
 Turns the threshold block's 2-pixels-per-beat stream into the 1-pixel-per-clock stream that `cca_top` takes (`docs/hdmi-cca_interface.md`). It sits at the input of the `centroiding` hierarchy (`scripts/bd/centroid_hier.tcl`), so the HDMI → centroiding boundary moves to the threshold output (see [Boundary change](#boundary-change)).
 
@@ -33,6 +33,8 @@ Turns the threshold block's 2-pixels-per-beat stream into the 1-pixel-per-clock 
 
 The master side follows `docs/hdmi-cca_interface.md`: 1 = foreground, raster order.
 
+**BD shell:** Vivado block-design module references need a Verilog or VHDL top file (they reject `.sv`). `pix_2to1_bd.v` is a logic-free Verilog wrapper with the same ports that instantiates `pix_2to1`, following `src/hdl/cca_top_bd.v`. Keep the port names above so Vivado infers the `s_axis`/`m_axis` interfaces, `aclk` and `aresetn`.
+
 ## Behavior
 
 1. **Order:** each input beat produces two output pixels: byte 0 first, then byte 1.
@@ -41,11 +43,13 @@ The master side follows `docs/hdmi-cca_interface.md`: 1 = foreground, raster ord
 4. **No loss, no duplication:** every accepted beat produces exactly two output pixels, including under `m_axis_tready` backpressure. Standard AXI4-Stream: an output pixel is held stable until accepted.
 5. **Throughput:**
    - With `m_axis_tready` held high, the converter must sustain one beat per two clocks.
-   - Within a line, `s_axis_tready` must not stay low for more than 1 consecutive cycle.
+   - Within a line, while `m_axis_tready` is high, `s_axis_tready` must not stay low for more than 1 consecutive cycle.
    - Being able to accept a new beat while emitting the second pixel of the previous one (2 px/clk peak) is allowed but not required.
 6. **Blanking passes through:** output `tvalid` is low whenever there's nothing to send. Don't buffer whole lines or frames: the ≥3,000 idle-cycle gap between frames must survive (`hdmi-cca_interface.md`, Frame Timing).
-7. **Latency:** fixed, ≤ 3 clocks from input acceptance to the first output pixel.
+7. **Latency:** with `m_axis_tready` high, fixed and ≤ 3 clocks from input acceptance to the first output pixel.
 8. **Reset:** while `aresetn` is low, `m_axis_tvalid = 0`, `s_axis_tready = 0`, and any held pixel is discarded.
+9. **Start-of-frame gate (OUT-4):** after reset, accept and discard every beat (`s_axis_tready` held high, `m_axis_tvalid` low) until a beat with `tuser = 1`. That beat and everything after it are converted as normal. The gate only re-arms on reset, so a relock mid-stream only gets dropped if the reset is asserted for it.
+10. **No input checking:** malformed input (`tuser` mid-line, missing or extra `tlast`, short lines) is converted as-is, by the rules above. Error detection is out of scope.
 
 ## Requirements
 
@@ -59,6 +63,7 @@ The master side follows `docs/hdmi-cca_interface.md`: 1 = foreground, raster ord
 | P2-6 | Blanking passes through as `tvalid` low; no line or frame buffering |
 | P2-7 | Reset behavior as in Behavior 8 |
 | P2-8 | Synthesizes in the 75 MHz domain without reducing the design's WNS below 0 |
+| P2-9 | Start-of-frame gate as in Behavior 9: the first pixel out after reset carries `tuser` |
 
 ## Verification
 
@@ -72,6 +77,7 @@ Verilator testbench `src/tb/pix_2to1_tb.sv`, with a file list in `scripts/fileli
 | `tuser` on beat 0, `tlast` every 960th beat | P2-2, P2-3 |
 | Full 1920×1080 frame + 49,500-cycle blank at 37.125 M beats/s | 1920 px per `tlast`, 1080 `tlast`s, one `tuser`, ≥ 3,000 idle cycles between frames at the output |
 | Reset mid-line | P2-7: no stale pixel comes out after reset |
+| Start mid-frame | P2-9: beats before the first `tuser` produce no output; the first output pixel carries `tuser` |
 | End to end | Through `cca_env_tb` with the golden model, fed 2 px/beat (follow-up) |
 
 On the board: ILA at the converter output (requirement VER-2 on the requirements page).
@@ -89,6 +95,6 @@ The HDMI → centroiding contract moves from the converter output to the thresho
 
 ## Open
 
-- [ ] Should the start-of-frame gate (discard until the first `tuser` after reset or relock, requirement OUT-4) live here, as the last block before `cca_top`? Recommended: yes.
+- [x] Start-of-frame gate (OUT-4) lives here: Behavior 9, P2-9. Decided 2026-11-10.
 - [ ] Confirm pixel order with Anthony's ILA: is the RX SS's pixel 0 in the low 24 bits, and does the threshold keep that order?
-- [ ] Custom RTL or Xilinx `axis_dwidth_converter`? The Xilinx IP needs `tuser` per byte (2 bits in), so the threshold would have to put SOF on byte 0 only.
+- [x] Custom RTL, not Xilinx `axis_dwidth_converter`: the IP can't implement the start-of-frame gate (Behavior 9), and it needs `tuser` per byte. Decided 2026-11-10.
