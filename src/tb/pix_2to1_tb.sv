@@ -10,8 +10,8 @@
 //     exp_q (with a model of the start-of-frame gate); every accepted output
 //     pixel pops one and compares
 //
-// Short lines (LINE_BEATS) keep the waveform readable. Full 1920x1080 frame
-// test is a TODO at the bottom.
+// Short lines (LINE_BEATS) keep the waveform readable. Test 5 runs two full
+// 1920x1080 frames at the real rate.
 
 module pix_2to1_tb;
 
@@ -48,6 +48,7 @@ module pix_2to1_tb;
     typedef struct packed {
         logic [7:0] data;
         logic       user, last;
+        int         t_in;   // cycle its beat was accepted (pixel 0 only, else -1)
     } pix_t;
 
     beat_t in_q[$];
@@ -64,6 +65,10 @@ module pix_2to1_tb;
     beat_t drv_b;           // beat being driven
     pix_t  exp_p;           // expected pixel being compared
     int  idle_cnt    = 0;   // driver: idle cycles left before the next beat
+    int  cyc         = 0;   // cycle counter
+    bit  check_lat   = 0;   // measure latency (only valid with m_axis_tready held high)
+    int  lat_min     = '1 >> 1;
+    int  lat_max     = 0;
 
     // ---------------- driver ----------------
     // AXI rule: once tvalid is high, hold the beat until tready accepts it.
@@ -92,6 +97,7 @@ module pix_2to1_tb;
         m_axis_tready <= ($urandom_range(99) >= stall_pct);
 
     // ---------------- scoreboard ----------------
+    always @(posedge aclk) cyc <= cyc + 1;
     always @(posedge aclk) rst_d <= !aresetn;
 
     always @(posedge aclk) begin
@@ -106,8 +112,8 @@ module pix_2to1_tb;
             if (s_axis_tvalid && s_axis_tready) begin
                 if (s_axis_tuser) tb_gate_open = 1;
                 if (tb_gate_open) begin
-                    exp_q.push_back('{data: {7'b0, s_axis_tdata[0]}, user: s_axis_tuser, last: 1'b0});
-                    exp_q.push_back('{data: {7'b0, s_axis_tdata[8]}, user: 1'b0, last: s_axis_tlast});
+                    exp_q.push_back('{data: {7'b0, s_axis_tdata[0]}, user: s_axis_tuser, last: 1'b0, t_in: cyc});
+                    exp_q.push_back('{data: {7'b0, s_axis_tdata[8]}, user: 1'b0, last: s_axis_tlast, t_in: -1});
                 end
             end
 
@@ -122,6 +128,11 @@ module pix_2to1_tb;
                         err($sformatf("pixel %0d: got data=%h user=%b last=%b, expected data=%h user=%b last=%b",
                                       pix_out, m_axis_tdata, m_axis_tuser, m_axis_tlast,
                                       exp_p.data, exp_p.user, exp_p.last));
+                    // Behavior 7: input acceptance -> first output pixel
+                    if (check_lat && exp_p.t_in >= 0) begin
+                        if (cyc - exp_p.t_in < lat_min) lat_min = cyc - exp_p.t_in;
+                        if (cyc - exp_p.t_in > lat_max) lat_max = cyc - exp_p.t_in;
+                    end
                 end
                 pix_out++;
             end
@@ -225,7 +236,7 @@ module pix_2to1_tb;
 
         // Test 1: back-to-back beats, m_axis_tready = 1 (P2-1, P2-5)
         $display("Test 1: back-to-back, no backpressure");
-        gap_pct = 0; stall_pct = 0; check_stall = 1;
+        gap_pct = 0; stall_pct = 0; check_stall = 1; check_lat = 1;
         queue_frame(3, 1);
         drain();
         check_stall = 0;
@@ -235,6 +246,7 @@ module pix_2to1_tb;
         gap_pct = 50; stall_pct = 0;
         queue_frame(3, 1);
         drain();
+        check_lat = 0;
 
         // Test 3: random backpressure (P2-4)
         $display("Test 3: random m_axis_tready");
@@ -254,7 +266,7 @@ module pix_2to1_tb;
 
         // Test 5: two full 1080p30 frames at real rate (P2-5, P2-6)
         $display("Test 5: 2 full 1920x1080 frames at 1 beat / 2 clocks");
-        gap_pct = 0; stall_pct = 0; check_stall = 1;
+        gap_pct = 0; stall_pct = 0; check_stall = 1; check_lat = 1;
         frame_check = 1; fm_frames = 0; fm_lines = 0; fm_px = 0; fm_idle = 0; fm_min_gap = '1 >> 1;
         repeat (2) queue_frame(FULL_LINES, 1, FULL_BEATS, 1, H_IDLE, V_IDLE);
         drain(2 * FULL_LINES * (2 * FULL_BEATS + H_IDLE) + 2 * V_IDLE + 1000);
@@ -262,9 +274,12 @@ module pix_2to1_tb;
         if (fm_lines != FULL_LINES)  err($sformatf("last frame had %0d lines, expected %0d", fm_lines, FULL_LINES));
         if (fm_min_gap < MIN_GAP)    err($sformatf("inter-frame gap %0d cycles, need >= %0d", fm_min_gap, MIN_GAP));
         $display("  inter-frame gap at output: %0d cycles", fm_min_gap);
-        frame_check = 0; check_stall = 0;
+        frame_check = 0; check_stall = 0; check_lat = 0;
 
-        // TODO: latency check (P2-5/Behavior 7: <= 3 clocks, m_axis_tready high).
+        // Latency, measured in Tests 1, 2 and 5 (m_axis_tready high): fixed and <= 3 clocks
+        $display("Latency: min %0d, max %0d clocks", lat_min, lat_max);
+        if (lat_max > 3)        err($sformatf("latency %0d clocks, spec allows <= 3", lat_max));
+        if (lat_min != lat_max) err("latency is not fixed");
 
         if (errors == 0) $display("PASS: %0d pixels checked", pix_out);
         else             $display("FAIL: %0d errors", errors);
