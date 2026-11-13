@@ -20,6 +20,8 @@ set xpr        $repo_root/build/debris_tracking/debris_tracking.xpr
 set xsa        $repo_root/build/pl_ps.xsa
 set jobs       [expr {[llength $argv] > 0 ? [lindex $argv 0] : 8}]
 
+set_param general.maxThreads 32
+
 if {[current_project -quiet] eq ""} {
     if {![file exists $xpr]} {
         error "no project at $xpr -- run scripts/create_project.tcl first"

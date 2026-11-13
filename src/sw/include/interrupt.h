@@ -10,9 +10,12 @@
 // IDs below must match the block design. Check them against the generated
 // xparameters.h after rebuilding the platform; override here if they differ.
 
-// GIC interrupt ID of pl_ps_irq0[0] on Zynq UltraScale+ (SPI 89 -> ID 121)
+// GIC interrupt ID of pl_ps_irq0[2] on Zynq UltraScale+ (SPI 91 -> ID 123).
+// scripts/bd/integrate.tcl puts axi_intc on bit 2; bits 0-1 are the HDMI
+// video PHY and RX. The legacy scripts/bd/pl_ps.tcl uses bit 0 (ID 121):
+// build with -DFRAME_GIC_INT_ID=121U for that design.
 #ifndef FRAME_GIC_INT_ID
-#define FRAME_GIC_INT_ID        121U
+#define FRAME_GIC_INT_ID        123U
 #endif
 
 // axi_intc input that cca_top.o_interrupt is wired to (bit 0 of intr[])
@@ -29,5 +32,9 @@ extern volatile uint32_t frame_irq_count;
 // Set up the GIC and axi_intc and enable the frame interrupt.
 // Returns 0 on success, nonzero if a driver call failed.
 int interrupt_init(void);
+
+// The GIC instance set up by interrupt_init(), for other drivers' handlers
+// (src/sw/hdmi/hdmi_rx.c). Valid only after interrupt_init() succeeds.
+void *interrupt_gic(void);
 
 #endif // INTERRUPT_H

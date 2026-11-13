@@ -28,6 +28,7 @@ set(USER_UNDEFINED_SYMBOLS
 
 set(USER_INCLUDE_DIRECTORIES
 "${CMAKE_CURRENT_SOURCE_DIR}/../../../src/sw/include"
+"${CMAKE_CURRENT_SOURCE_DIR}/../../../src/sw/hdmi"
 )
 
 #Add any source below, they will be added as Compile sources.
@@ -49,6 +50,8 @@ set(USER_COMPILE_SOURCES
 "${CMAKE_CURRENT_SOURCE_DIR}/../../../src/sw/geometry.c"
 "${CMAKE_CURRENT_SOURCE_DIR}/../../../src/sw/hungarian.c"
 "${CMAKE_CURRENT_SOURCE_DIR}/../../../src/sw/track.c"
+"${CMAKE_CURRENT_SOURCE_DIR}/../../../src/sw/hdmi/hdmi_rx.c"
+"${CMAKE_CURRENT_SOURCE_DIR}/../../../src/sw/hdmi/si5432_axi.c"
 )
 
 # -----------------------------------------
@@ -77,7 +80,7 @@ set(USER_COMPILE_WARNINGS_INHIBIT_ALL )
 # -----------------------------------------
 
 # Optimization level   "-O0" [None], "-O1" [Optimize] , "-O2" [Optimize More], "-O3" [Optimize Most] or "-Os" [Optimize Size]
-set(USER_COMPILE_OPTIMIZATION_LEVEL -O0)
+set(USER_COMPILE_OPTIMIZATION_LEVEL -O2)
 
 # Other flags related to optimization
 set(USER_COMPILE_OPTIMIZATION_OTHER_FLAGS )

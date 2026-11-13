@@ -1,8 +1,14 @@
 # =============================================================================
 # create_project.tcl  --  regenerate the Vivado project from tracked sources
 #
-#   vivado -mode batch -source scripts/create_project.tcl
+#   vivado -mode batch -source scripts/create_project.tcl                 (hdmi)
+#   vivado -mode batch -source scripts/create_project.tcl -tclargs pattern
+#   vivado -mode batch -source scripts/create_project.tcl -tclargs legacy
 #   vivado -mode gui   -source scripts/create_project.tcl
+#
+# Block design:
+#   hdmi (default), pattern  scripts/bd/integrate.tcl, whole PL on pl_clk0 = pl_clk_mhz
+#   legacy                   scripts/bd/pl_ps.tcl, the original 100 MHz pattern_gen design
 #
 # Everything Vivado generates lands in build/ (gitignored), including the
 # block design and its IP output products. Nothing in build/ is a source of
@@ -11,12 +17,14 @@
 # Sources, all referenced in place (nothing is copied):
 #   src/hdl/*.sv, *.v        RTL (also the module references in the BD)
 #   src/xdc/*.xdc            constraints
-#   scripts/bd/pl_ps.tcl     block design (built from Tcl, not a .bd file)
+#   scripts/bd/integrate.tcl integrated block design top (built from Tcl)
+#   scripts/bd/*_hier.tcl    centroiding and HDMI hierarchies
+#   scripts/bd/pl_ps.tcl     original block design (legacy)
 #   src/tb/*.sv              simulation sources
 #
-# Project top: pl_ps_wrapper for now. top.sv is empty until the HDMI path is
-# integrated; switch top_module to "top" then. src/bd/hdmi_rx/hdmi_rx.bd is a
-# placeholder until the hdmi branch merges, and is not added.
+# Project top: pl_ps_wrapper. src/bd/hdmi_rx/hdmi_rx.bd and
+# scripts/hdmi_rx_export.tcl are Anthony's original design, kept for
+# reference only; neither is used by the build.
 # =============================================================================
 
 # ---- paths ------------------------------------------------------------------
@@ -36,6 +44,11 @@ set top_module "pl_ps_wrapper"
 # zeros table synthesize to flip-flops with 1024:1 read muxes. 256 matches
 # the 256-centroid BRAM slot and passes the full-HD golden suite.
 set cca_num_labels 256
+
+# One PL clock for everything (docs/PLAN.md). >= 74.25 MHz for 1080p30.
+set pl_clk_mhz 75
+
+set bd_variant [expr {[llength $argv] > 0 ? [lindex $argv 0] : "hdmi"}]
 
 # ---- version guard ----------------------------------------------------------
 set required_version "2025.2"
@@ -73,8 +86,13 @@ if {[llength $xdc_files] > 0} {
 }
 
 # ---- block design -----------------------------------------------------------
-source $repo_root/scripts/bd/pl_ps.tcl
-create_pl_ps $repo_root $cca_num_labels
+if {$bd_variant eq "legacy"} {
+    source $repo_root/scripts/bd/pl_ps.tcl
+    create_pl_ps $repo_root $cca_num_labels
+} else {
+    source $repo_root/scripts/bd/integrate.tcl
+    create_integrate $repo_root $cca_num_labels $bd_variant $pl_clk_mhz
+}
 
 set bd_file [get_files pl_ps.bd]
 generate_target all $bd_file
@@ -100,4 +118,4 @@ if {[llength $tb_files] > 0} {
     puts "NOTE: no testbenches in src/tb, skipping sim fileset"
 }
 
-puts "Project created at $build_dir/$proj_name/$proj_name.xpr (top: $top_module, cca_top NUM_LABELS = $cca_num_labels)"
+puts "Project created at $build_dir/$proj_name/$proj_name.xpr (top: $top_module, variant: $bd_variant, pl_clk0: $pl_clk_mhz MHz, cca_top NUM_LABELS = $cca_num_labels)"
