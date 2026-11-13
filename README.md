@@ -5,10 +5,11 @@ FPGA-accelerated video processing pipeline for classifying and tracking orbital 
 - **PL (FPGA fabric, SystemVerilog):** binarized 1920×1080 video in, streaming connected-component analysis (single-pass CCL + per-object area and coordinate sums), results written to a shared BRAM, one interrupt per frame.
 - **PS (ARM Cortex-A53, bare-metal C):** reads the centroids on the interrupt, runs the advisor's classification (assignment + GESD outlier test) and tracking, and streams results over UART.
 
-**Status (Nov 2026)** — the work is spread across branches (see [Branches](#branches)):
+**Status (2026-11-13): end-to-end on live HDMI video.** A laptop plays the advisor's star-field video (`SampleDataRun9.mp4`) full-screen over HDMI at 1920×1080p30. The board thresholds it, runs CCA in the PL, and classifies and tracks on the PS at the full 30 frames/s (no frames skipped). Every board centroid matched the source video pixel-exactly in the frames checked (`results/run2.csv` against `scripts/golden/png_frame.py`; 10 frames, 116–123 objects each, 0 missing, 0 extra). Timing is met at 75 MHz (WNS +0.65 ns).
 
-- **`pl_ps`:** the full board path runs. A test-pattern generator (3 static shapes plus 1 moving square, free-running at ~46 frames/s) feeds the CCA hardware. The PS classifies the moving square as an object and the static shapes as stars, and a host script decodes the UART telemetry. Open items: timing (WNS −1.8 ns at 100 MHz) and `NUM_LABELS` = 256 (1024 doesn't route).
-- **`hdmi`:** HDMI input front end (HDMI RX Subsystem block design), in progress. Not yet joined to the CCA pipeline.
+- **Pipeline:** HDMI RX Subsystem (2 px/clk) → `threshold` (grey > 64) → `pix_2to1` (2 px/beat → 1 px/clk, start-of-frame gate) → `cca_top` → BRAM + interrupt → PS → UART telemetry.
+- **Not yet verified:** the PS's star/object labels against the MATLAB reference; a 10-minute soak; HDMI replug.
+- **Fallback build:** `create_project.tcl -tclargs pattern` swaps HDMI for the on-chip test pattern (3 static shapes + 1 moving square).
 
 ---
 
@@ -18,14 +19,11 @@ An index of the project's materials: code, documents, figures, data and referenc
 
 ### Branches
 
-| Branch | Owner | What's on it | State |
-| --- | --- | --- | --- |
-| `main` | team | Last integrated version: CCA RTL + testbenches, first `pl_ps` block design, PS classifier/tracker C code (merged from `centroiding`, PR #2, Oct 2026) | Default branch on GitHub |
-| `pl_ps` | Adam Welsh | Everything on `main`, plus: CCA RTL fixes and the verification environment (golden model, random/directed/full-HD regressions), PS/PL integration (BRAM reader, interrupts, UART telemetry), scripted Vivado/Vitis build flow, board bring-up, and the moving-object test pattern | Active. Not merged into `main` yet. This README is from here |
-| `hdmi` | Anthony Bolda | HDMI input front end: HDMI RX Subsystem block design (`src/bd/hdmi_rx/hdmi_rx.bd`), per the Genesys ZU HDMI reference design. Branched from an older `main` (Sep 2026). It doesn't have the CCA RTL or the PS code | Active. **TODO (Anthony):** push current work and describe it here |
-| `centroiding` | Adam Welsh | Earlier centroiding work | Merged into `main` (PR #2), deleted on GitHub |
+| Branch | What's on it | State |
+| --- | --- | --- |
+| `main` | Everything: CCA RTL and its verification environment, HDMI front end (`scripts/bd/hdmi_hier.tcl`), threshold, 2:1 converter, integrated block design, PS application, scripted build flow | Default branch. The HDMI-to-centroids milestone was merged from `integrate` (Nov 2026) |
 
-To look at a branch: `git fetch` then `git switch <branch>`. On GitHub, use the branch selector at the top left of the file list. GitHub shows `main` and its README by default, so `pl_ps` needs to be merged (pull request) before visitors see this README and the current code.
+Earlier branches were merged and deleted: `centroiding` (CCA, PR #2), `pl_ps` (PS/PL integration and build flow, PR #4), `hdmi` (HDMI RX), `thresholding` (threshold block) and `integrate` (HDMI + centroiding in one block design). New work goes on a short-lived branch off `main`.
 
 ### Where things are, and who can access them
 
@@ -35,20 +33,20 @@ To look at a branch: `git fetch` then `git switch <branch>`. On GitHub, use the 
 | Datasets (advisor's simulation runs) | Advisor's public repo [`nnategh/orbital-debris`](https://github.com/nnategh/orbital-debris), folder [`assets/data/`](https://github.com/nnategh/orbital-debris/tree/master/assets/data) | Public |
 | CSVs exported from those datasets, sweep results | Not in the repo. Local copy: `~/Desktop/orbital-debris/capstone_assets/` on Adam's laptop | **TODO:** add to the repo (or a shared drive) and link it here |
 | Presentation slides (milestone presentations) | Google Drive | Accessible by team members only |
-| Lab machine (Vivado/Vitis 2025.2 + board) | `vivadoclinic` lab PC. `pl_ps` clone at `~/Desktop/adam_stuff/OrbitalDebris`. HDMI Vitis workspace at `~/hdmi_vitis/ws` (**TODO (Anthony):** confirm) | Team |
+| Lab machine (Vivado/Vitis 2025.2 + board) | `vivadoclinic` lab PC. Clone at `~/Desktop/adam_stuff/OrbitalDebris` (HDMI licence is node-locked to this PC) | Team |
 
 ### Code
 
 | Directory | Contents | Language |
 | --- | --- | --- |
-| `src/hdl/` | Synthesizable RTL: CCA pipeline (`cca_top`, `cca_control`, `ccl_decision`, `label_decision_logic`, `translator_lut`, `fifo`, `feature_extract`), test pattern generator (`pattern_gen`), button debouncer, Verilog shells for the block design (`*_bd.v`) | SystemVerilog / Verilog |
+| `src/hdl/` | Synthesizable RTL: video threshold (`threshold`), 2:1 pixel converter with start-of-frame gate (`pix_2to1`), CCA pipeline (`cca_top`, `cca_control`, `ccl_decision`, `label_decision_logic`, `translator_lut`, `fifo`, `feature_extract`), test pattern generator (`pattern_gen`), button debouncer, Verilog shells for the block design (`*_bd.v`) | SystemVerilog / Verilog |
 | `src/tb/` | Self-checking testbenches (see [Verifying the centroiding pipeline](#verifying-the-centroiding-pipeline-cca_top)) | SystemVerilog |
-| `src/sw/` | PS application: BRAM reader, interrupt setup, classifier, Hungarian assignment, tracker, UART telemetry, host unit tests (`test_*.c`) and the dataset test harness (`test_harness.c`) | C |
-| `src/sw/vitis/` (`pl_ps`) | Vitis app config: source list (`UserConfig.cmake`) and linker script (`lscript.ld`, 2 MB stack) | CMake / ld |
-| `src/xdc/` | Pin constraints (Digilent master XDC) | XDC |
-| `src/bd/` | `hdmi_rx/hdmi_rx.bd`: HDMI RX block design, an empty placeholder except on `hdmi`. The PS/PL block design has no `.bd` here: `scripts/create_project.tcl` builds it from `scripts/bd/pl_ps.tcl` | Vivado BD |
+| `src/sw/` | PS application: BRAM reader, interrupt setup, HDMI RX bring-up (`hdmi/`), classifier, Hungarian assignment, tracker, UART telemetry, host unit tests (`test_*.c`) and the dataset test harness (`test_harness.c`) | C |
+| `src/sw/vitis/` | Vitis app config: source list (`UserConfig.cmake`) and linker script (`lscript.ld`, 2 MB stack) | CMake / ld |
+| `src/xdc/` | Pin constraints (Digilent Genesys ZU rev C XDC, HDMI pins enabled) | XDC |
+| `src/bd/` | `hdmi_rx/hdmi_rx.bd`: Anthony's original HDMI RX design, kept for reference only. The block design is built from Tcl by `scripts/create_project.tcl` (`scripts/bd/integrate.tcl` + `*_hier.tcl`) | Vivado BD |
 | `src/sim/` | QuestaSim/ModelSim run scripts | Tcl / sh |
-| `scripts/` | `create_project.tcl` and `simulate.sh` on all branches. On `pl_ps` only: build flow (`generate_bitstream.tcl`, `create_vitis.py`, `build_app.py`, `run_board.tcl`), block design (`bd/pl_ps.tcl`), regressions (`regress.sh`, `golden/`), telemetry decoder (`telemetry_decode.py`) | Tcl / Python / sh |
+| `scripts/` | Build flow (`create_project.tcl`, `generate_bitstream.tcl`, `create_vitis.py`, `build_app.py`, `run_board.tcl`), block design (`bd/integrate.tcl` top, `bd/hdmi_hier.tcl`, `bd/centroid_hier.tcl`; `bd/pl_ps.tcl` legacy), simulation (`simulate.sh`, `filelists/`), regressions (`regress.sh`, `golden/`), screenshot-vs-board check (`golden/png_frame.py`), telemetry decoder (`telemetry_decode.py`) | Tcl / Python / sh |
 | `compression_scripts/` | Converts grayscale video to the 1-bit-per-pixel format, and plays it back (own README) | Python |
 | `original_matlab/` | The advisor's MATLAB reference implementation of the classifier and tracker, copied from [`nnategh/orbital-debris`](https://github.com/nnategh/orbital-debris) | MATLAB |
 | `boards/` | Digilent Genesys ZU board files, loaded by `create_project.tcl` | XML |
@@ -60,9 +58,11 @@ To look at a branch: `git fetch` then `git switch <branch>`. On GitHub, use the 
 | Document | What it is |
 | --- | --- |
 | [`docs/spring26_report.md`](docs/spring26_report.md) | Spring 2026 progress report: architecture, MATLAB→C translation, test harness, validation results vs MATLAB |
-| [`docs/hdmi-cca_interface.md`](docs/hdmi-cca_interface.md) | Video pipeline → CCA interface: AXI4-Stream format, frame timing, blanking requirements |
-| [`docs/pl-ps_interface_spec.md`](docs/pl-ps_interface_spec.md) | PL → PS handoff (v0.3 on `pl_ps`): BRAM layout, word formats, interrupt protocol, reset, frame trigger, limits |
-| [`docs/uart-telemetry.md`](docs/uart-telemetry.md) (`pl_ps`) | Binary UART telemetry packet format (921600 baud) and the decoder |
+| [`docs/hdmi-cca_interface.md`](docs/hdmi-cca_interface.md) | Threshold output → centroiding interface (v0.2): 16-bit, 2 px/beat AXI4-Stream, 1080p30 on 75 MHz, backpressure, frame timing |
+| [`docs/pix_2to1_spec.md`](docs/pix_2to1_spec.md) | 2:1 pixel converter and start-of-frame gate: interface, behaviour, requirements, test plan |
+| [`docs/PLAN.md`](docs/PLAN.md) | HDMI → centroiding integration plan and status, to the Dec 11 demo |
+| [`docs/pl-ps_interface_spec.md`](docs/pl-ps_interface_spec.md) | PL → PS handoff (v0.3): BRAM layout, word formats, interrupt protocol, reset, frame trigger, limits |
+| [`docs/uart-telemetry.md`](docs/uart-telemetry.md) | Binary UART telemetry packet format (921600 baud) and the decoder |
 | `compression_scripts/README.md` | How to produce 1-bit-per-pixel test video |
 
 ### Figures
@@ -71,7 +71,7 @@ To look at a branch: `git fetch` then `git switch <branch>`. On GitHub, use the 
 | --- | --- | --- |
 | `docs/top_level_cca_architecture.jpg` | Top-level CCA hardware architecture | **TODO:** source/tool |
 | `docs/feature_extract_top_bd.jpg` | Feature-extract module block diagram | **TODO:** source/tool |
-| `docs/golden_model_flow.svg` / `.png` (`pl_ps`) | How the golden model checks the hardware: the same frame goes through the RTL and an independent flood-fill model, and the BRAM contents are compared | Hand-written SVG, rendered to PNG with `rsvg-convert` |
+| `docs/golden_model_flow.svg` / `.png` | How the golden model checks the hardware: the same frame goes through the RTL and an independent flood-fill model, and the BRAM contents are compared | Hand-written SVG, rendered to PNG with `rsvg-convert` |
 
 Simulation results are printed by the testbenches, not saved as figures. Waveforms go to `sim/build/dump.vcd` when requested (GTKWave). **TODO:** put the figures in a slide deck with a caption for each.
 
@@ -123,27 +123,35 @@ Simulation results are printed by the testbenches, not saved as figures. Wavefor
 
 ## Building and running on the board
 
-This is the `pl_ps` flow. The HDMI branch is built from its own project (**TODO (Anthony):** steps).
-
 Everything Vivado and Vitis generate (`build/`, `vitis/`) is gitignored and is recreated from the repo. Run from the repo root, with Vivado/Vitis 2025.2 on `PATH`:
 
 ```bash
-# 1. Vivado project (board files from boards/, block design from scripts/bd/pl_ps.tcl)
+# 1. Vivado project (board files from boards/, block design from scripts/bd/integrate.tcl)
+#    default: HDMI input.  -tclargs pattern: on-chip test pattern instead
 vivado -mode batch -source scripts/create_project.tcl -log create.log -nojournal
 
-# 2. Bitstream + build/pl_ps.xsa (prints WNS at the end)
-vivado -mode batch -source scripts/generate_bitstream.tcl -log build/bit.log -nojournal
+# 2. Bitstream + build/pl_ps.xsa (prints WNS at the end). Last argument = parallel jobs
+vivado -mode batch -source scripts/generate_bitstream.tcl -log build/bit.log -nojournal -tclargs $(nproc)
 
 # 3. Vitis platform + app from the XSA -> vitis/debris_app/build/debris_app.elf
 vitis -s scripts/create_vitis.py
 #    after editing src/sw only:  vitis -s scripts/build_app.py
 
 # 4. Board in JTAG boot mode. Start the decoder, then program and run
-python3 scripts/telemetry_decode.py /dev/ttyUSB1          # terminal 1
+python3 scripts/telemetry_decode.py --baud 921600 /dev/ttyUSB1 --csv results/run.csv   # terminal 1
 xsdb scripts/run_board.tcl                                 # terminal 2
 ```
 
-`run_board.tcl` doesn't use Vitis's Run button, which hangs on this board. It runs `psu_init`, programs the PL and starts the app over JTAG. With `FREE_RUN 1` in `src/sw/main.c`, the PS starts the test pattern itself through an AXI GPIO. With `FREE_RUN 0`, press BTN2 for each frame.
+`run_board.tcl` doesn't use Vitis's Run button, which hangs on this board. It runs `psu_init`, programs the PL and starts the app over JTAG.
+
+**HDMI source (laptop):** set the board's display to exactly 1920×1080 (30 Hz, extended, no HiDPI scaling) and play the video full-screen at 1:1, with no player controls or cursor. Objects are single pixels, so any scaling destroys them:
+
+```bash
+mpv --fs --fs-screen=1 --screen=1 --video-unscaled=yes --no-osc --osd-level=0 \
+    --cursor-autohide=always --loop SampleDataRun9.mp4
+```
+
+**Pattern build:** with `FREE_RUN 1` in `src/sw/main.c`, the PS starts the test pattern itself through an AXI GPIO. With `FREE_RUN 0`, press BTN2 for each frame.
 
 ---
 
@@ -183,8 +191,6 @@ Before pushing, check that nothing unintended is staged with `git status`. Never
 ---
 
 ## Verifying the centroiding pipeline (cca_top)
-
-On `pl_ps`. `main` has only the original `cca_top_tb` smoke test.
 
 Simulation uses Verilator (`./simulate <testbench> [+plusargs]`). The `cca_*_tb`
 testbenches are self-checking: each frame is compared against an independent

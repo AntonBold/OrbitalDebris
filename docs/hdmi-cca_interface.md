@@ -96,8 +96,8 @@ Blanking must reach the boundary as `tvalid` low: no frame buffering, and no com
 
 ## Open Questions
 
-- [ ] Threshold method (one channel or luma) and value, agreed by both sides (THR-3)
-- [ ] Confirm on the ILA that the RX subsystem puts pixel 0 in its low 24 bits, so pixel 0 lands in bit 0 here (THR-1)
+- [x] Threshold method and value (THR-3): MATLAB `rgb2gray` grey > 64 (`scripts/bd/integrate.tcl`). Verified on `SampleDataRun9.mp4`, where objects are grey 244 on 0.
+- [x] Pixel order (THR-1): confirmed on the board. Centroids match the source video pixel-exactly (`results/run2.csv`, 2026-11-13), which a swapped pair would break.
 
 ---
 

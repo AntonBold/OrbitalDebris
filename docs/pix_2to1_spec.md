@@ -91,10 +91,10 @@ The HDMI → centroiding contract moves from the converter output to the thresho
 | HDMI side (Anthony) delivers | 8-bit, 1 px/clk | 16-bit, 2 px/beat (format above) |
 | `centroiding` hierarchy input | `cca_top` directly | `pix_2to1` → `cca_top` |
 
-`docs/hdmi-cca_interface.md` v0.2 needs this, plus 1080p30 and the 75 MHz clock. `centroid_hier.tcl` exposes a 16-bit `s_axis` instead of 8-bit. The `pattern` variant (`pattern_gen`, 1 px/clk) bypasses the converter or gets its own path, which is still to be decided.
+`docs/hdmi-cca_interface.md` v0.2 needs this, plus 1080p30 and the 75 MHz clock. `centroid_hier.tcl` exposes a 16-bit `s_axis` instead of 8-bit. The `pattern` variant (`pattern_gen`, 1 px/clk) bypasses the converter: `create_centroid_hier` takes `with_conv` (1 for `hdmi`, 0 for `pattern`).
 
 ## Open
 
 - [x] Start-of-frame gate (OUT-4) lives here: Behavior 9, P2-9. Decided 2026-11-10.
-- [ ] Confirm pixel order with Anthony's ILA: is the RX SS's pixel 0 in the low 24 bits, and does the threshold keep that order?
+- [x] Pixel order: confirmed on the board. Centroids match the source video pixel-exactly (`results/run2.csv`, 2026-11-13).
 - [x] Custom RTL, not Xilinx `axis_dwidth_converter`: the IP can't implement the start-of-frame gate (Behavior 9), and it needs `tuser` per byte. Decided 2026-11-10.
