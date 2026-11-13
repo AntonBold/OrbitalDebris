@@ -73,6 +73,7 @@ proc create_centroid_hier {parent name cca_num_labels} {
         [get_bd_pins axi_smc/aclk] \
         [get_bd_pins axi_bram_ctrl_0/s_axi_aclk] \
         [get_bd_pins axi_intc_0/s_axi_aclk] \
+        [get_bd_pins cca_top_0/clk] \
         [get_bd_pins pix_2to1_0/aclk]
     connect_bd_net [get_bd_pins peripheral_aresetn] \
         [get_bd_pins axi_smc/aresetn] \
