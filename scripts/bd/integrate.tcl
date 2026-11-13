@@ -25,9 +25,9 @@
 # pattern only:
 #   button / axi_gpio (0xA002_0000) -> pattern_gen -> centroiding
 #
-# The hdmi_in -> centroiding pixel stream is not connected yet: it needs
-# Anthony's threshold and 2:1 converter (see hdmi_hier.tcl). Until then
-# centroiding's s_axis inputs are tied off.
+# hdmi pixel stream: hdmi_in/M_AXIS (48-bit RGB, 2 px/beat) -> threshold_0
+# (src/hdl/threshold_bd.v, grey > THR) -> centroiding/s_axis_* (16-bit, 2 px/beat).
+# threshold_0 is combinational and passes tready straight back to hdmi_in.
 # =============================================================================
 
 source [file join [file dirname [info script]] centroid_hier.tcl]
@@ -102,8 +102,9 @@ proc create_integrate {repo_root cca_num_labels variant clk_mhz} {
 
     if {$variant eq "hdmi"} {
         build_hdmi_variant $clk_mhz
-        lappend clk_pins  [get_bd_pins hdmi_in/clk] [get_bd_pins zynq_ultra_ps_e_0/maxihpm0_lpd_aclk]
-        lappend rstn_pins [get_bd_pins hdmi_in/peripheral_aresetn]
+        lappend clk_pins  [get_bd_pins hdmi_in/clk] [get_bd_pins zynq_ultra_ps_e_0/maxihpm0_lpd_aclk] \
+                          [get_bd_pins threshold_0/aclk]
+        lappend rstn_pins [get_bd_pins hdmi_in/peripheral_aresetn] [get_bd_pins threshold_0/aresetn]
     } else {
         build_pattern_variant
         lappend clk_pins  [get_bd_pins sync_debouncer_0/sys_clk] [get_bd_pins pattern_gen_0/i_clk] \
@@ -180,14 +181,16 @@ proc build_hdmi_variant {clk_mhz} {
     connect_bd_net [get_bd_pins hdmi_in/vphy_irq] [get_bd_pins irq_concat/In0]
     connect_bd_net [get_bd_pins hdmi_in/rx_irq]   [get_bd_pins irq_concat/In1]
 
-    # No pixel stream yet (threshold/converter pending): centroiding sees an
-    # idle stream (tvalid = 0).
-    set z [create_bd_cell -type inline_hdl -vlnv xilinx.com:inline_hdl:ilconstant:1.0 pix_idle]
-    set_property CONFIG.CONST_VAL {0} $z
-    connect_bd_net [get_bd_pins pix_idle/dout] \
-        [get_bd_pins centroiding/s_axis_tvalid] \
-        [get_bd_pins centroiding/s_axis_tuser] \
-        [get_bd_pins centroiding/s_axis_tlast]
+    # Video threshold between the HDMI RX stream and centroiding. THR = grey
+    # level 0..255, foreground = grey > THR. 32 is the agreed value for now.
+    set thr 32
+    set th [create_bd_cell -type module -reference threshold_bd threshold_0]
+    set_property CONFIG.THR $thr $th
+    connect_bd_intf_net [get_bd_intf_pins hdmi_in/M_AXIS] [get_bd_intf_pins threshold_0/s_axis]
+    foreach sig {tdata tvalid tuser tlast} {
+        connect_bd_net [get_bd_pins threshold_0/bin_$sig] [get_bd_pins centroiding/s_axis_$sig]
+    }
+    connect_bd_net [get_bd_pins centroiding/s_axis_tready] [get_bd_pins threshold_0/bin_tready]
 }
 
 # pattern_gen fallback: button OR axi_gpio bit 0 -> pattern_gen -> centroiding

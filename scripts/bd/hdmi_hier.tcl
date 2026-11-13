@@ -19,8 +19,11 @@
 # rx_video_clk and link_clk stay recovered from the HDMI input, inside this
 # hierarchy. TODO (Anthony): threshold -> 2:1 converter after the register
 # slice, then expose M_AXIS_PIX (1 bit/px, docs/hdmi-cca_interface.md).
+# Done so far: the register slice output is exposed as M_AXIS (48-bit RGB,
+# 2 px/beat); integrate.tcl puts threshold_0 after it, at the top level. The
+# slice's m_axis_tready comes from that stream (no constant).
 #
-# Pins: clk, drpclk, peripheral_aresetn, S_AXI, DDC, MUX_IIC, HDMI/GTH pads, vphy_irq, rx_irq.
+# Pins: clk, drpclk, peripheral_aresetn, M_AXIS, S_AXI, DDC, MUX_IIC, HDMI/GTH pads, vphy_irq, rx_irq.
 # axi_iic_0 settings are copied from Digilent's Genesys ZU HDMI demo; its
 # Si5342 LOL GPIO is TX-only (vphy tx_refclk_rdy) and is left out.
 # =============================================================================
@@ -36,6 +39,7 @@ proc create_hdmi_hier {parent name clk_mhz} {
     create_bd_pin -dir I -type clk drpclk
     create_bd_pin -dir I -type rst peripheral_aresetn
     create_bd_intf_pin -mode Slave  -vlnv xilinx.com:interface:aximm_rtl:1.0 S_AXI
+    create_bd_intf_pin -mode Master -vlnv xilinx.com:interface:axis_rtl:1.0  M_AXIS
     create_bd_intf_pin -mode Master -vlnv xilinx.com:interface:iic_rtl:1.0   DDC
     create_bd_intf_pin -mode Master -vlnv xilinx.com:interface:iic_rtl:1.0   MUX_IIC
     create_bd_pin -dir I -from 2 -to 0 phy_rxn_in
@@ -85,9 +89,7 @@ proc create_hdmi_hier {parent name clk_mhz} {
         CONFIG.C_SLOT_0_AXI_TRIG_SEL {1} \
         CONFIG.C_SLOT_0_INTF_TYPE {xilinx.com:interface:axis_rtl:1.0}] $ila
 
-    # Constants: register slice always ready (until the threshold exists),
-    # audio unused, vphy AXI4-Stream resets held released.
-    create_bd_cell -type inline_hdl -vlnv xilinx.com:inline_hdl:ilconstant:1.0 tready_one
+    # Constants: audio unused, vphy AXI4-Stream resets held released.
     set c [create_bd_cell -type inline_hdl -vlnv xilinx.com:inline_hdl:ilconstant:1.0 audio_aclk_zero]
     set_property CONFIG.CONST_VAL {0} $c
     set c [create_bd_cell -type inline_hdl -vlnv xilinx.com:inline_hdl:ilconstant:1.0 audio_aresetn_one]
@@ -109,6 +111,7 @@ proc create_hdmi_hier {parent name clk_mhz} {
                         [get_bd_intf_pins v_hdmi_rx_ss_0/SB_STATUS_IN]
     connect_bd_intf_net [get_bd_intf_pins v_hdmi_rx_ss_0/VIDEO_OUT] [get_bd_intf_pins axis_register_slice_0/S_AXIS]
     connect_bd_intf_net [get_bd_intf_pins axis_register_slice_0/M_AXIS] [get_bd_intf_pins system_ila_0/SLOT_0_AXIS]
+    connect_bd_intf_net [get_bd_intf_pins axis_register_slice_0/M_AXIS] [get_bd_intf_pins M_AXIS]
 
     # ---- PS-supplied clock and reset: all on the one PL clock -----------------
     connect_bd_net [get_bd_pins clk] \
@@ -150,7 +153,6 @@ proc create_hdmi_hier {parent name clk_mhz} {
     connect_bd_net [get_bd_pins v_hdmi_rx_ss_0/hpd] [get_bd_pins hpd]
 
     # ---- constants and interrupts -------------------------------------------
-    connect_bd_net [get_bd_pins tready_one/dout] [get_bd_pins axis_register_slice_0/m_axis_tready]
     connect_bd_net [get_bd_pins audio_aclk_zero/dout] [get_bd_pins v_hdmi_rx_ss_0/s_axis_audio_aclk]
     connect_bd_net [get_bd_pins audio_aresetn_one/dout] [get_bd_pins v_hdmi_rx_ss_0/s_axis_audio_aresetn]
     connect_bd_net [get_bd_pins vphy_aresetn_one/dout] \

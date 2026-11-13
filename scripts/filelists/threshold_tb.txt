@@ -1,0 +1,4 @@
+# Testbench: threshold_tb
+# Paths are relative to the repo root. One file per line; # starts a comment.
+src/tb/threshold_tb.sv
+src/hdl/threshold.sv
