@@ -2,105 +2,108 @@
 
 ## HDMI Video Pipeline → Centroiding (CCL/CCA) Module Handoff
 
-**Version:** 0.1
+**Version:** 0.2
 **Authors:** Adam Welsh
 
 ---
 
 ## Overview
 
-The video pipeline (HDMI RX Subsystem → thresholding) hands off a binarized, one-bit-per-pixel video stream to the Centroiding module over AXI4-Stream. The video pipeline owns everything upstream of this interface — clock recovery, pixel format, thresholding, and any internal width/clock conversion needed to produce the format below. The Centroiding module owns everything downstream, starting from this interface.
+The video pipeline (HDMI RX Subsystem → threshold) hands a binarized video stream, 2 pixels per beat, to the `centroiding` hierarchy over AXI4-Stream. Inside `centroiding`, `pix_2to1` (`docs/pix_2to1_spec.md`) converts it to 1 pixel per clock for `cca_top`.
 
-Everything in this document describes the **contract at the boundary only**. Neither side needs to know how the other implements its side, as long as this contract is met.
+The video pipeline owns everything up to and including the threshold output. Centroiding owns everything from `centroiding/s_axis_*` onward. This document is the contract at that boundary only.
 
 ---
 
 ## Interface Signals
 
-| Signal          | Width  | Direction (rel. to Centroiding module) | Description                                  |
-| --------------- | ------ | --------------------------------------- | --------------------------------------------- |
-| `s_axis_tdata`  | 8 bits | in                                       | Bit 0 = pixel value. Bits [7:1] reserved, don't-care. |
-| `s_axis_tvalid` | 1 bit  | in                                       | Standard AXI4-Stream valid                    |
-| `s_axis_tready` | 1 bit  | out                                      | Standard AXI4-Stream ready (see Backpressure) |
-| `s_axis_tlast`  | 1 bit  | in                                       | End of scan line                              |
-| `s_axis_tuser`  | 1 bit  | in                                       | Start of frame (asserted on first pixel only) |
-| `s_axis_aclk`   | —      | in                                       | Interface clock (see Clocking)                |
-| `rst`           | 1 bit  | in                                       | Active-high reset (driven by `proc_sys_reset` `peripheral_reset` in the block design) |
+| Signal          | Width | Direction (rel. to Centroiding) | Description |
+| --------------- | ----- | ------------------------------- | ----------- |
+| `s_axis_tdata`  | 16    | in  | Bit 0 = pixel 0 (left), bit 8 = pixel 1 (right). All other bits don't-care. |
+| `s_axis_tvalid` | 1     | in  | Standard AXI4-Stream valid |
+| `s_axis_tready` | 1     | out | Standard AXI4-Stream ready (see Backpressure) |
+| `s_axis_tuser`  | 1     | in  | Start of frame: first beat of a frame only |
+| `s_axis_tlast`  | 1     | in  | End of line: last beat of each line only |
 
-**Note on `tdata` width:** the pixel value is logically 1 bit. It is carried in an 8-bit (1-byte) field because standard AXI4-Stream infrastructure IP (width converters, FIFOs) operates on byte granularity — sub-byte `TDATA` widths aren't a configurable option. This is a hardware constraint of the shared toolchain, not a design preference by either side.
+Clock and reset are shared, not part of the stream: see Clocking and Reset.
 
 ### Pixel Value Convention
 
-| Value | Meaning     |
-| ----- | ----------- |
-| 1     | Foreground  |
-| 0     | Background  |
+| Value | Meaning    |
+| ----- | ---------- |
+| 1     | Foreground |
+| 0     | Background |
 
 ### Framing
 
-- `tuser` pulses high on the very first pixel of a frame.
-- `tlast` pulses high on the last pixel of each scan line.
-- Standard raster order: left-to-right within a line, top-to-bottom across lines.
+- Every beat carries 2 real pixels, so a 1920-pixel line is exactly **960 beats**, pairing pixels (0,1), (2,3) … (1918,1919). No partial beats, no `tkeep`.
+- **1080 lines per frame.**
+- `tuser` is high on the first beat of a frame (row 0, pixels 0–1) and on no other beat.
+- `tlast` is high on beat 959 of every line (pixels 1918–1919) and on no other beat.
+- Raster order: left to right within a line, top to bottom across lines.
 
 ---
 
 ## Clocking
 
-`s_axis_aclk` must sustain the true, real-time 1920×1080@60fps pixel rate — i.e., the interface must never fall behind during active video, with no sustained backlog forming.
-
-This document intentionally does not pin an exact clock frequency (in MHz) or clock name. The video pipeline side is responsible for choosing/deriving a clock (from the recovered HDMI clock, an internal PLL, or otherwise) that satisfies the rate requirement above. If a specific clock net or frequency is finalized, record it below for reference, but the requirement is the rate guarantee, not the specific number:
-
-> Clock net / frequency: _TBD — video pipeline owner to fill in once finalized_
+- **One clock:** `pl_clk0` at **75 MHz** drives the RX subsystem's AXI4-Stream output, the threshold, `pix_2to1` and `cca_top`. No clock-domain crossing at this boundary.
+- **Video mode: 1920×1080p30** (74.25 MHz pixel clock, 2200 × 1125 total).
+- **Rate:** within a line, video arrives at 37.125 M beats/s (74.25 Mpx/s), so on average about **one beat every 2 clocks**. `pix_2to1` accepts up to one beat every 2 clocks (75 Mpx/s), so the boundary never builds a backlog.
 
 ---
 
 ## Backpressure
 
-Standard AXI4-Stream handshake (`tvalid`/`tready`) is retained for IP compatibility, but note: live HDMI video cannot be paused at the source. The video pipeline should not rely on `tready` deasserting as a normal flow-control mechanism — the Centroiding module is designed to always be ready to accept a pixel once video is flowing (see Clocking above). `tready` deassertion should be treated as an abnormal/error condition, not a routine backpressure path.
+`s_axis_tready` **is a normal flow-control signal**, not an error condition. `pix_2to1` holds it low about every other cycle while it sends the second pixel of a beat, and never for more than 1 cycle in a row while video is flowing.
+
+The video pipeline must:
+
+- Follow the AXI4-Stream rule: once `tvalid` is high, hold `tdata`, `tuser` and `tlast` stable until `tready` accepts the beat.
+- Never drop or duplicate a beat while `tready` is low. The RX subsystem's internal FIFO absorbs the stall, provided the threshold passes `tready` straight through.
 
 ---
 
 ## Frame Timing
 
-Because `tready` is always high, the Centroiding module relies on idle time
-(`tvalid` low) at two points to do its per-frame housekeeping:
+Blanking must reach the boundary as `tvalid` low: no frame buffering, and no compressing frames back to back. `cca_top` uses the idle cycles between frames to dump results to BRAM and clear its tables.
 
-| Gap | Minimum | Why |
-| --- | ------- | --- |
-| Reset released → first pixel | `NUM_LABELS` cycles (1024) | Translator LUT clears itself after reset is released; merges are ignored until it finishes |
-| Last pixel of a frame → first pixel of the next | `2 × NUM_LABELS + 2 × max centroids + ~16` cycles (≈ 2,600 for 1024 labels / 256 centroids; budget 3,000) | Feature Extract dumps to BRAM, and the TL and line buffer clear, before the next frame's pixels can be accepted |
+| Gap | Minimum | Expected at 1080p30 |
+| --- | ------- | ------------------- |
+| Last beat of a frame → first beat of the next | 3,000 clocks | ≈ 100,000 clocks (45 blank lines) |
+| Line to line | none | ≈ 300 clocks |
 
-Real 1080p60 video has 45 lines of vertical blanking (≈ 99,000 pixel clocks at
-2200 clocks/line), so the inter-frame gap is met with a wide margin, provided
-the video pipeline passes blanking through as `tvalid` low rather than
-compressing frames back-to-back (e.g., via a frame buffer replaying at a higher
-rate). `pattern_gen` models this: after every frame it holds `tvalid` low for
-`VBLANK_LINES × (WIDTH + H_BLANK)` cycles (default 45 × 2200 = 99,000), also
-when free-running with `i_enable` held high. `cca_top_tb` and
-`pattern_gen_vblank_tb` flag any pixel that arrives while the module is busy.
+---
+
+## Reset
+
+- The video pipeline's stream logic uses the active-low `rst_pl/peripheral_aresetn`, the same reset block as `centroiding`.
+- During reset, `s_axis_tvalid` must be low.
+- **Partial frames are handled on the Centroiding side:** after reset, `pix_2to1` discards beats until the first `tuser`. The video pipeline does not need to gate its output.
+- `cca_top` needs `NUM_LABELS` (256 in the current build) idle clocks after reset before the first pixel. This is met in practice because the RX locks long after the PL reset is released.
 
 ---
 
 ## Key Decisions
 
-| Decision                                              | Rationale                                                                 |
-| ------------------------------------------------------ | -------------------------------------------------------------------------- |
-| Thresholding happens in the video pipeline, not in Centroiding | Keeps the Centroiding module's input trivial (1 bit/pixel) and avoids carrying full-width color/luma data across the width-conversion and clock-domain-crossing chain. |
-| Data carried as 1 byte (not fewer) per pixel          | Forced by AXI4-Stream infrastructure IP, which is byte-granular. Bits [7:1] are unused by Centroiding. |
-| Exact clock frequency left unspecified                | The real requirement is a rate guarantee (no backlog), not a specific number — avoids re-deriving this document if pipeline-internal clocking choices change. |
+| Decision | Rationale |
+| -------- | --------- |
+| Threshold in the video pipeline | Keeps the Centroiding input at 1 bit per pixel instead of carrying 48-bit RGB. |
+| 2 px/beat at the boundary, converted inside Centroiding | The RX subsystem outputs 2 px/clk. The conversion and its start-of-frame gate sit next to the consumer, which owns the 1 px/clk requirement. |
+| Each pixel in its own byte (bits 0 and 8) | AXI4-Stream tooling is byte-granular. |
+| 1080p30 on one 75 MHz clock | `cca_top`'s Fmax is about 85 MHz. 1080p60 would need about 125 MHz. At 30 fps no rate-matching FIFO or CDC is needed. |
 
 ---
 
 ## Open Questions
 
-- [ ] Confirm which clock net actually drives `s_axis_aclk` once video pipeline clocking is finalized
-- [ ] Confirm reset synchronization requirements between the two clock domains, if `s_axis_aclk` differs from other PL clocks in the design
-- [ ] Confirm whether `tuser`/`tlast` timing exactly matches the convention above once the thresholding block is implemented
+- [ ] Threshold method (one channel or luma) and value, agreed by both sides (THR-3)
+- [ ] Confirm on the ILA that the RX subsystem puts pixel 0 in its low 24 bits, so pixel 0 lands in bit 0 here (THR-1)
 
 ---
 
 ## Revision History
 
-| Version | Date       | Notes         |
-| ------- | ---------- | ------------- |
+| Version | Date       | Notes |
+| ------- | ---------- | ----- |
 | 0.1     | 2026-07-11 | Initial draft |
+| 0.2     | 2026-11-13 | Boundary moves to the threshold output: 16-bit, 2 px/beat. 1080p30 on `pl_clk0` at 75 MHz. `tready` low is normal backpressure. Start-of-frame gate in `pix_2to1`. Reset and `NUM_LABELS` updated. |
