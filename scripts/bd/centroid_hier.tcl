@@ -1,9 +1,10 @@
 # =============================================================================
 # centroid_hier.tcl  --  the centroiding hierarchy (owner: Adam)
 #
-# create_centroid_hier <parent> <name> <cca_num_labels>
+# create_centroid_hier <parent> <name> <cca_num_labels> <with_conv>
 #
-#   s_axis_* (1 bit/px, docs/hdmi-cca_interface.md) -> cca_top -> BRAM port B
+#   with_conv 1 (hdmi):    s_axis_* (16 bit, 2 px/beat) -> pix_2to1 -> cca_top -> BRAM port B
+#   with_conv 0 (pattern): s_axis_* (8 bit, 1 px/clk)              -> cca_top -> BRAM port B
 #   S_AXI -> SmartConnect -> AXI BRAM ctrl (BRAM port A)
 #                         -> axi_intc
 #   cca_top.o_interrupt -> axi_intc (rising edge) -> irq
@@ -14,7 +15,7 @@
 # Call check_centroid_hier after validate_bd_design.
 # =============================================================================
 
-proc create_centroid_hier {parent name cca_num_labels} {
+proc create_centroid_hier {parent name cca_num_labels with_conv} {
     set old [current_bd_instance .]
     current_bd_instance $parent
     set hier [create_bd_cell -type hier $name]
@@ -25,7 +26,7 @@ proc create_centroid_hier {parent name cca_num_labels} {
     create_bd_pin -dir I -type rst peripheral_reset
     create_bd_pin -dir I -type rst peripheral_aresetn
     create_bd_intf_pin -mode Slave -vlnv xilinx.com:interface:aximm_rtl:1.0 S_AXI
-    create_bd_pin -dir I -from 15 -to 0 s_axis_tdata
+    create_bd_pin -dir I -from [expr {$with_conv ? 15 : 7}] -to 0 s_axis_tdata
     create_bd_pin -dir I s_axis_tvalid
     create_bd_pin -dir I s_axis_tuser
     create_bd_pin -dir I s_axis_tlast
@@ -60,7 +61,9 @@ proc create_centroid_hier {parent name cca_num_labels} {
     catch {set_property CONFIG.POLARITY ACTIVE_HIGH [get_bd_pins cca_top_0/rst]}
     catch {set_property CONFIG.SENSITIVITY EDGE_RISING [get_bd_pins cca_top_0/o_interrupt]}
 
-    set conv [create_bd_cell -type module -reference pix_2to1_bd pix_2to1_0]
+    if {$with_conv} {
+        create_bd_cell -type module -reference pix_2to1_bd pix_2to1_0
+    }
 
     # ---- AXI ----------------------------------------------------------------
     connect_bd_intf_net [get_bd_intf_pins S_AXI] [get_bd_intf_pins axi_smc/S00_AXI]
@@ -69,31 +72,42 @@ proc create_centroid_hier {parent name cca_num_labels} {
     connect_bd_intf_net [get_bd_intf_pins axi_bram_ctrl_0/BRAM_PORTA] [get_bd_intf_pins axi_bram_ctrl_0_bram/BRAM_PORTA]
 
     # ---- clock and resets ---------------------------------------------------
-    connect_bd_net [get_bd_pins clk] \
+    set clk_pins [list \
         [get_bd_pins axi_smc/aclk] \
         [get_bd_pins axi_bram_ctrl_0/s_axi_aclk] \
         [get_bd_pins axi_intc_0/s_axi_aclk] \
-        [get_bd_pins cca_top_0/clk] \
-        [get_bd_pins pix_2to1_0/aclk]
-    connect_bd_net [get_bd_pins peripheral_aresetn] \
+        [get_bd_pins cca_top_0/clk]]
+    set rstn_pins [list \
         [get_bd_pins axi_smc/aresetn] \
         [get_bd_pins axi_bram_ctrl_0/s_axi_aresetn] \
-        [get_bd_pins axi_intc_0/s_axi_aresetn] \
-        [get_bd_pins pix_2to1_0/aresetn]
+        [get_bd_pins axi_intc_0/s_axi_aresetn]]
+    if {$with_conv} {
+        lappend clk_pins  [get_bd_pins pix_2to1_0/aclk]
+        lappend rstn_pins [get_bd_pins pix_2to1_0/aresetn]
+    }
+    connect_bd_net [get_bd_pins clk] {*}$clk_pins
+    connect_bd_net [get_bd_pins peripheral_aresetn] {*}$rstn_pins
     connect_bd_net [get_bd_pins peripheral_reset] [get_bd_pins cca_top_0/rst]
 
     # ---- pixel stream in ----------------------------------------------------
-    foreach sig {tdata tvalid tuser tlast} {
-        connect_bd_net [get_bd_pins s_axis_$sig] [get_bd_pins pix_2to1_0/s_axis_$sig]
-    }
-    connect_bd_net [get_bd_pins pix_2to1_0/s_axis_tready] [get_bd_pins s_axis_tready]
+    if {$with_conv} {
+        # hierarchy -> pix_2to1 -> cca_top
+        foreach sig {tdata tvalid tuser tlast} {
+            connect_bd_net [get_bd_pins s_axis_$sig] [get_bd_pins pix_2to1_0/s_axis_$sig]
+        }
+        connect_bd_net [get_bd_pins pix_2to1_0/s_axis_tready] [get_bd_pins s_axis_tready]
 
-    # ---- conv to cca top ----------------------------------------------------
-    foreach sig {tdata tvalid tuser tlast} {
-        connect_bd_net [get_bd_pins pix_2to1_0/m_axis_$sig] [get_bd_pins cca_top_0/i_$sig]
+        foreach sig {tdata tvalid tuser tlast} {
+            connect_bd_net [get_bd_pins pix_2to1_0/m_axis_$sig] [get_bd_pins cca_top_0/i_$sig]
+        }
+        connect_bd_net [get_bd_pins cca_top_0/o_trdy] [get_bd_pins pix_2to1_0/m_axis_tready]
+    } else {
+        # hierarchy -> cca_top
+        foreach sig {tdata tvalid tuser tlast} {
+            connect_bd_net [get_bd_pins s_axis_$sig] [get_bd_pins cca_top_0/i_$sig]
+        }
+        connect_bd_net [get_bd_pins cca_top_0/o_trdy] [get_bd_pins s_axis_tready]
     }
-
-    connect_bd_net [get_bd_pins cca_top_0/o_trdy] [get_bd_pins pix_2to1_0/m_axis_tready]
 
 
     # cca_top drives BRAM port B pin by pin (byte addresses, 32-bit words)

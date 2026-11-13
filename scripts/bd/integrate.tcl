@@ -93,7 +93,8 @@ proc create_integrate {repo_root cca_num_labels variant clk_mhz} {
     set unused_irqs {3 4 5 6 7}
 
     # ---- centroiding (both variants) ----------------------------------------
-    create_centroid_hier / centroiding $cca_num_labels
+    # hdmi: 2 px/beat from the threshold, through pix_2to1. pattern: 1 px/clk, direct.
+    create_centroid_hier / centroiding $cca_num_labels [expr {$variant eq "hdmi"}]
     connect_bd_net [get_bd_pins rst_pl/peripheral_reset] [get_bd_pins centroiding/peripheral_reset]
     lappend clk_pins  [get_bd_pins centroiding/clk]
     lappend rstn_pins [get_bd_pins centroiding/peripheral_aresetn]
