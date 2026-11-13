@@ -1,0 +1,4 @@
+# Testbench: pix_2to1_tb
+# Paths are relative to the repo root. One file per line; # starts a comment.
+src/tb/pix_2to1_tb.sv
+src/hdl/pix_2to1.sv
