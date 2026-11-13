@@ -182,8 +182,9 @@ proc build_hdmi_variant {clk_mhz} {
     connect_bd_net [get_bd_pins hdmi_in/rx_irq]   [get_bd_pins irq_concat/In1]
 
     # Video threshold between the HDMI RX stream and centroiding. THR = grey
-    # level 0..255, foreground = grey > THR. 32 is the agreed value for now.
-    set thr 32
+    # level 0..255, foreground = grey > THR. 64 is a trial value (THR-3 still open):
+    # 32 gave ~250 centroids/frame for ~120 objects.
+    set thr 64
     set th [create_bd_cell -type module -reference threshold_bd threshold_0]
     set_property CONFIG.THR $thr $th
     connect_bd_intf_net [get_bd_intf_pins hdmi_in/M_AXIS] [get_bd_intf_pins threshold_0/s_axis]
