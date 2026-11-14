@@ -1,0 +1,20 @@
+1.	 Original
+	a.	Spacecraft.w0=[-.0005;.0005;0.005];
+2.	No Rotation
+	a.	Spacecraft.w0=[0;0;0];
+3.	Single X Axis Rotation
+	a.	Spacecraft.w0=[0.0005;0.0;0.0];
+4.	Single Z Axis Rotation
+	a.	Spacecraft.w0=[0.00;0.0;0.005];
+5.	Faster Z Axis Rotation
+	a.	Spacecraft.w0=[0;0.0;1].*0.0349;
+6.	Faster X Axis Rotation
+	a.	Spacecraft.w0=[1;0.0;].*0.0349;
+7.	Slow Full Rotation
+	a.	Spacecraft.w0=[-1;1;1].*0.0000727;
+8.	Slow X Axis Rotation
+	a.	Spacecraft.w0=[1;0;0].*0.0000727;
+9.	Slow Z Axis Rotation
+	a.	Spacecraft.w0=[0;0;1].*0.0000727;
+10.	Faster Full Rotation
+	a.	Spacecraft.w0=[-1;1;1].*0.0349

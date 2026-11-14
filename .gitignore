@@ -98,3 +98,6 @@ __pycache__/
 
 # HDMI Vitis build
 hdmi_vitis_build
+
+# Raw advisor datasets (48-67 MB each): fetched by original_data/fetch_mat.sh, not committed
+/original_data/mat/
