@@ -8,15 +8,16 @@
 #define MAX_CENTROIDS   256
 #define MAX_OBJECTS     10
 #define UNMATCHED_COST  100
-#define DELTA           10
+#define DELTA           1
 #define EPS             1e-2f
 #define INF             1e5f
+#define MEMORY_LEN      (2 * DELTA)
 
 // -- Core Types --
 
 typedef struct {
-    float x;
-    float y;
+    double x;
+    double y;
     uint16_t area;      // pixels (from the PL; 0 when not known, e.g. CSV input)
 } Centroid;
 
@@ -26,13 +27,13 @@ typedef struct {
 } Match;
 
 typedef struct {
-    float x;
-    float y;
+    double x;
+    double y;
 } Vec2;
 
 typedef struct {
     Vec2 center;
-    float angle;
+    double angle;
     int i1;     // index in frame t-2
     int i2;     // index in frame t-1
     int i3;     // index in frame t

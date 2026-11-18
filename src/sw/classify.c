@@ -6,10 +6,7 @@
 #include <math.h>
 #include <string.h>
 #include <stdio.h>
-
-// static int gesd_debug = 1; 
-
-// math helpers
+#include "include/gesd_table.h"
 
 static float array_mean (const float *arr, int n)
 {
@@ -28,38 +25,7 @@ static float array_std(const float *arr, int n, float mean)
     return sqrtf(sum / (n - 1));
 }
 
-// Approximation of the inverse t-distribution CDF
-// Uses a rational approximation - accurate enough for our purposes
-// Returns t such that P(T <= t) = p for T ~ t(df)
-static float t_inv(float p, int df)
-{
-    // use normal approximation for large df
-    if (df > 100) {
-        // Rational approximation of normal inverse CDF (Beasley-Springer-Moro)
-        float q = p - 0.5f;
-        float r;
-        if (fabsf(q) <= 0.42f) {
-            r = q * q;
-            return q * ((((-25.4410604f * r + 41.3911977f) * r
-                          - 18.6150006f) * r + 2.5066282f)
-                        / ((((3.13082909f * r - 21.0622410f) * r
-                             + 23.0833674f) * r - 8.4735109f) * r + 1.0f));
-        } else {
-            r = (q > 0) ? (1.0f - p) : p;
-            r = sqrtf(-logf(r));
-            float t = (((1.4272223f * r + 3.0271426f) * r
-                        - 0.4533108f) * r - 2.9729552f)
-                      / ((1.6370678f * r + 3.5425892f) * r + 1.0f);
-            return (q > 0) ? t : -t;
-        }
-    }
 
-    // For smaller df, use a simple iterative approximation
-    // based on the relationship between t and F distributions
-    float z = t_inv(p, 10000); // start with normal approx
-    float correction = (z * z * z + z) / (4.0f * df);
-    return z + correction;
-}
 
 // -- GESD outlier detection --
 // Implements Rosner (1983) Generalized ESD test
@@ -67,82 +33,60 @@ static float t_inv(float p, int df)
 void gesd_outliers(const float *values, int count, int max_outliers, int *is_outlier)
 {
     for (int i = 0; i < count; i++) is_outlier[i] = 0;
-
     if (count < 3 || max_outliers <= 0) return;
 
-    int r = max_outliers;
-    if (r > count / 2) r = count / 2;
+    int r = max_outliers < count ? max_outliers : count;
 
     float working[MAX_CENTROIDS];
-    int working_idx[MAX_CENTROIDS]; // original indices
-    for (int i = 0; i < count; i++) {
-        working[i] = values[i];
-        working_idx[i] = i;
-    }
-
-    float R[MAX_CENTROIDS]; // test statistics
-    int removed_idx[MAX_CENTROIDS]; // which original indices were removed
-    int n = count;
     
-    for (int i = 0; i < r; i ++ ) R[i] = 0.0f;
+    for (int i = 0; i < count; i++)
+        working[i] = values[i];
 
-    // Compute r test statistics by iteratively removing the most extreme value
-    for (int i = 0; i < r; i++) {
+    float step_mean[MAX_CENTROIDS], step_std[MAX_CENTROIDS], step_lam[MAX_CENTROIDS];
+    int n = count;
+    int last = 0;
+
+    for (int k = 0; k < r; k++) 
+    {
         float mean = array_mean(working, n);
-        float std = array_std(working, n, mean);
-        if (std < 1e-6f) break; // cant compute meaningful statistic
+        float std = n > 1 ? array_std(working, n, mean) : 0.0f;
+        float lam = n >= 3 ? GESD_LAMBDA[n] : 0.0f;
+        step_mean[k] = mean;
+        step_std[k] = std;
+        step_lam[k] = lam;
+        if (std == 0.0f) break;
 
-        // find the value that maximized |x - mean|
         float max_dev = -1.0f;
         int max_j = 0;
         for (int j = 0; j < n; j++) {
             float dev = fabsf(working[j] - mean);
-            if (dev > max_dev) {
-                max_dev = dev;
+            if (dev > max_dev) 
+            { 
+                max_dev = dev; 
                 max_j = j;
             }
         }
+        if (lam > 0.0f && max_dev / std > lam)
+            last = k + 1;
 
-        R[i] = max_dev / std;
-        removed_idx[i] = working_idx[max_j];
-
-        // remove the most extreme value
-        for (int j = max_j; j < n - 1; j++) {
+        for (int j = max_j; j < n - 1; j++)
             working[j] = working[j + 1];
-            working_idx[j] = working_idx[j + 1];
-        }
+
         n--;
     }
+    // baounds come from the step after the last significant one (MATLAB isoutlier).
+    // last is 1-based
+    int t = last;
+    if (t > r - 1)
+        t = r -1;
 
-    // compute critical values and find largest i where R[i] > lambda[i]
-    float alpha = 0.05f;
-    int num_outliers = 0;
+    if (step_lam[t] == 0.0f) return;
+    float lo = step_mean[t] - step_std[t] * step_lam[t];
+    float hi = step_mean[t] + step_std[t] * step_lam[t];
 
-    for (int i = 0; i < r; i++) {
-        int ni = count - i;
-        float p = 1.0f - alpha / (2.0f * (count - i + 1));
-        int df = ni - 2;
-
-        if (df < 1) break;
-
-        float t = t_inv(p, df);
-        float t2 = t * t;
-        float lambda = ((float)(ni) * t)
-               / sqrtf(((float)(ni - 1) + t2) * (float)(ni + 1));
-        // if (gesd_debug) {
-        //     printf("i=%d R=%.4f lambda=%.4f n=%d df=%d t=%.4f\n",
-        //             i, R[i], lambda, ni, df, t);
-        // }
-
-        if (R[i] > lambda)
-            num_outliers = i + 1;
-    }
-
-    //printf("DEBUG num_outliers=%d\n", num_outliers);
-
-    // Mark the first num_outliers removed indices as outliers
-    for (int i = 0; i < num_outliers; i++)
-        is_outlier[removed_idx[i]] = 1;
+    for (int i = 0; i < count; i++)
+        if (values[i] < lo || values[i] > hi)
+            is_outlier[i] = 1;
 }
 
 // -- classifyFrame --
@@ -154,19 +98,19 @@ void classifyFrame(ClassifiedFrame *memory, int memory_count, const CentroidFram
     out->frame = *new_frame;
     out->rotations.count = 0;
     out->matches.count = 0;
-    out->prev_frame_idx = -1;
 
     // initialize all labels to unkown
 
     for (int i = 0; i < new_frame->count; i++)
         out->labels.labels[i] = LABEL_UNKNOWN;
     out->labels.count = new_frame->count;
-
-    // need at least one previous frame to classify
-    if (memory_count == 0)
+    
+    // match against the frame d back
+    int d = config->delta;
+    if (memory_count < d)
         return;
 
-    ClassifiedFrame *prev = &memory[memory_count - 1];
+    ClassifiedFrame *prev = &memory[memory_count - d];
     const CentroidFrame *C1 = &prev->frame;
     const CentroidFrame *C2 = new_frame;
 
@@ -177,25 +121,13 @@ void classifyFrame(ClassifiedFrame *memory, int memory_count, const CentroidFram
     if (fabsf((float) n1 -n2) >= config->max_num_objects)
         return;
     
-    // build cost matrix
+    // predict where prev's points are now (rotation, else translation), then cost matrix
+    Centroid C1_predicted[MAX_CENTROIDS];
+    predictPositions(C1->centroids, n1, &prev->matches, prev->translations,
+                     &prev->rotations, C1_predicted);
     float D[MAX_CENTROIDS][MAX_CENTROIDS];
-    getCostMatrix(C1->centroids, n1, C2->centroids, n2, D);
+    getCostMatrix(C1_predicted, n1, C2->centroids, n2, D);
 
-    // apply translation prediction if we have previous matches
-    if (prev->matches.count > 0) {
-        Vec2 T[MAX_CENTROIDS] = {0};
-        for (int k = 0; k < prev->matches.count; k++) {
-            int idx = prev->matches.matches[k].to;
-            T[idx] = prev->translations[k];
-        }
-
-        CentroidFrame C1_predicted = *C1;
-        for (int i = 0; i < n1; i++) {
-            C1_predicted.centroids[i].x += T[i].x;
-            C1_predicted.centroids[i].y += T[i].y;
-        }
-        getCostMatrix(C1_predicted.centroids, n1, C2->centroids, n2, D);
-    }   
 
     // Run hungarian algorithm
     Match matches[MAX_CENTROIDS];
@@ -205,8 +137,6 @@ void classifyFrame(ClassifiedFrame *memory, int memory_count, const CentroidFram
     for (int i = 0; i < nm; i++)
         out->matches.matches[i] = matches[i];
     out->matches.count = nm;
-
-    out->prev_frame_idx = memory_count - 1;
 
     // compute translations
     getTranslations(C1->centroids, C2->centroids, matches, nm, out->translations);
@@ -244,26 +174,15 @@ void classifyFrame(ClassifiedFrame *memory, int memory_count, const CentroidFram
             out->labels.labels[matches[i].to] = tf[i] ? LABEL_OBJECT : LABEL_STAR;  
     }
 
-    // Phase 2: rotation labeling once memory is full
+    // Rotation labeling: triplets from frames i-2d, i-d, i (paper Algorithm 1)
 
+    // requires frames i-d and i-2d in memory
+    if (memory_count >= 2*d && (config->use_rotation_center || config->use_rotation_angle)) {
 
-    // requires at least 2 frames in memory to get triplets
-    if ((memory_count >= config->delta) && memory_count >= 2 && (config->use_rotation_center || config->use_rotation_angle)) {
+        // prev1's matches go from prev2 to prev1, so prev2 is d frames before it
+        ClassifiedFrame *prev1 = &memory[memory_count - d];
+        ClassifiedFrame *prev2 = &memory[memory_count - 2 * d];
 
-
-
-
-        ClassifiedFrame *prev1 = &memory[memory_count-1];
-
-        // Follow chain all the way back to oldest frame
-        int oldest_idx = memory_count - 1;
-        while (memory[oldest_idx].prev_frame_idx >= 0 && 
-               memory[oldest_idx].prev_frame_idx < memory_count - 1) {
-            oldest_idx = memory[oldest_idx].prev_frame_idx;
-        }
-
-
-        ClassifiedFrame *prev2 = &memory[oldest_idx];
 
         // only proceed if prev1 has matches back to prev2
         if (prev1->matches.count > 0 && nm > 0) {

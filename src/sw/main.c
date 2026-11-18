@@ -52,7 +52,7 @@ static const ClassifierConfig config = {
 // State --
 
 // Ring buffer of classified frames (memory for classifier)
-static ClassifiedFrame clf_memory[DELTA];
+static ClassifiedFrame clf_memory[MEMORY_LEN];
 static int clf_memory_count = 0;
 
 // current classified and tracked frames
@@ -144,13 +144,13 @@ int main(void)
         trk_initialized = 1;
 
         // update classifier memory ring bufffer
-        if (clf_memory_count < DELTA) {
+        if (clf_memory_count < MEMORY_LEN) {
             clf_memory[clf_memory_count++] = clf_current;
         } else {
             // shift memory left, add new frame at end
-            for (int i = 0; i < DELTA - 1; i++)
+            for (int i = 0; i < MEMORY_LEN - 1; i++)
                 clf_memory[i] = clf_memory[i + 1];
-            clf_memory[DELTA - 1] = clf_current;
+            clf_memory[MEMORY_LEN - 1] = clf_current;
         }
 
         // TODO: write results back to PL for HDMI overlay

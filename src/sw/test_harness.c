@@ -16,7 +16,7 @@ typedef struct {
     int8_t ground_truth[MAX_CENTROIDS]; // 1=object, 0=star 
 } GroundTruthFrame;
 
-static GroundTruthFrame gt_frames[MAX_FRAMES];
+static GroundTruthFrame gt_frames[MAX_FRAMES + 1];
 static int n_frames = 0;
 
 // performance metrics 
@@ -40,10 +40,10 @@ static int load_csv(const char *path)
     }
 
     int frame, label;
-    float x, y;
+    double x, y;
     int current_frame = -1;
 
-    while (fscanf(f, "%d,%f,%f,%d\n", &frame, &x, &y, &label) == 4) {
+    while (fscanf(f, "%d,%lf,%lf,%d\n", &frame, &x, &y, &label) == 4) {
         if (frame != current_frame) {
             if (frame > MAX_FRAMES) {
                 printf("ERROR: frame %d exceeds MAX_FRAMES\n", frame);
@@ -124,7 +124,7 @@ int main(int argc, char *argv[])
     ClassifierConfig config = {
         .unmatched_cost            = config_argc > 0 ? atof(config_argv[0]) : 1000.0f,
         .max_num_objects           = config_argc > 1 ? atoi(config_argv[1]) : 10,
-        .delta                     = config_argc > 2 ? atoi(config_argv[2]) : 10,
+        .delta                     = config_argc > 2 ? atoi(config_argv[2]) : 1,
         .use_translation_magnitude = config_argc > 3 ? atoi(config_argv[3]) : 1,
         .use_translation_angle     = config_argc > 4 ? atoi(config_argv[4]) : 1,
         .use_rotation_center       = config_argc > 5 ? atoi(config_argv[5]) : 1,
@@ -137,7 +137,8 @@ int main(int argc, char *argv[])
        config.use_rotation_center, config.use_rotation_angle);
 
     // State
-    ClassifiedFrame clf_memory[MAX_DELTA];
+    ClassifiedFrame clf_memory[2 * MAX_DELTA];
+    int mem_len = 2 * config.delta;     // frames i-d and i-2d
     int clf_memory_count = 0;
     ClassifiedFrame clf_current;
 
@@ -197,21 +198,13 @@ int main(int argc, char *argv[])
         }
 
         // update classifier memory ring buffer
-        if (clf_memory_count < config.delta) {
+        if (clf_memory_count < mem_len) {
             clf_memory[clf_memory_count++] = clf_current;
         } else {
-            // shift left — decrement all prev_frame_idx to stay valid
-            for (int i = 0; i < config.delta - 1; i++) {
+            // shift memory left, add new frame at end (same as main.c)
+            for (int i = 0; i < mem_len - 1; i++)
                 clf_memory[i] = clf_memory[i + 1];
-                // adjust stored prev_frame_idx after shift
-                if (clf_memory[i].prev_frame_idx > 0)
-                    clf_memory[i].prev_frame_idx--;
-                else
-                    clf_memory[i].prev_frame_idx = -1;
-            }
-            clf_memory[config.delta - 1] = clf_current;
-
-            clf_memory[config.delta - 1].prev_frame_idx = config.delta - 2;
+            clf_memory[mem_len - 1] = clf_current;
         }
     }
 

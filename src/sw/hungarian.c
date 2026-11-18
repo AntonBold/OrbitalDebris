@@ -2,29 +2,44 @@
 #include "include/centroid.h"
 #include <float.h>
 
-// Hungarian algorithm (Munkres assignment)
-// assigns rows to columns to minimize total cost.
-// Only accepts assignments wehre cost < unmatched_cost.
+#define N_MAX (2 * MAX_CENTROIDS)
+#define BIG   1e30f
+
+// Hungarian algorithm (Munkres assignment), solving the same problem as
+// MATLAB matchpairs (paper Algorithm 4):
+//   minimize  sum of matched D[i][j]  +  unmatched_cost * (unmatched rows + unmatched columns)
+// The n1 x n2 matrix is extended to (n1+n2) x (n1+n2) so any row or column
+// can stay unmatched at unmatched_cost. A pair is matched only when that is
+// cheaper than leaving both ends unmatched (D < 2 * unmatched_cost at most).
 
 int hungarian(float D[MAX_CENTROIDS][MAX_CENTROIDS], int n1, int n2, float unmatched_cost, Match *matches_out)
 {
-    int n = n1 > n2 ? n1 : n2; // square matrix dimension
-    
-    float cost[MAX_CENTROIDS][MAX_CENTROIDS] = {0};
-    int row_covered[MAX_CENTROIDS] = {0};
-    int col_covered[MAX_CENTROIDS] = {0};
-    int starred[MAX_CENTROIDS][MAX_CENTROIDS] = {0};
-    int primed [MAX_CENTROIDS][MAX_CENTROIDS] = {0};
+    int n = n1 + n2; // matchpairs: every row and column may stay unmatched at unmatched_cost
+
+    static float cost[N_MAX][N_MAX];
+    static unsigned char starred[N_MAX][N_MAX];
+    static unsigned char primed[N_MAX][N_MAX];
+    int row_covered[N_MAX] = {0};
+    int col_covered[N_MAX] = {0};
+    for (int i = 0; i < n; i++)
+        for (int j = 0; j < n; j++) { starred[i][j] = 0; primed[i][j] = 0; }
 
 
-    // Copy cost matrix into square working matrix
-    // Pad with unmatched_cost for dummy rows/cols
+    // Build the (n1+n2) square matrix:
+    //   top-left     D               real pairs
+    //   top-right    uc on diagonal  row i left unmatched (BIG elsewhere)
+    //   bottom-left  uc on diagonal  column j left unmatched (BIG elsewhere)
+    //   bottom-right 0               dummy to dummy, free
     for (int i = 0; i < n; i++) {
         for (int j = 0; j < n; j++) {
-            if (i < n1 && j < n2)
-                cost[i][j] = D[i][j];
+             if (i < n1 && j < n2)
+                cost[i][j] = D[i][j];                                   // real pair
+            else if (i < n1)
+                cost[i][j] = (j - n2 == i) ? unmatched_cost : BIG;      // row i unmatched
+            else if (j < n2)
+                cost[i][j] = (i - n1 == j) ? unmatched_cost : BIG;      // column j unmatched
             else
-                cost[i][j] = unmatched_cost;
+                cost[i][j] = 0.0f;                                      // dummy-dummy
         }
     }
     
@@ -47,8 +62,8 @@ int hungarian(float D[MAX_CENTROIDS][MAX_CENTROIDS], int n1, int n2, float unmat
     }
 
     // step 3: star zeros
-    int row_has_star[MAX_CENTROIDS] = {0};
-    int col_has_star[MAX_CENTROIDS] = {0};
+    int row_has_star[N_MAX] = {0};
+    int col_has_star[N_MAX] = {0};
     for (int i = 0; i < n; i++) {
         for (int j = 0; j < n; j++) {
             if (cost[i][j] == 0.0f && !row_has_star[i] && !col_has_star[j]) {
@@ -123,8 +138,8 @@ int hungarian(float D[MAX_CENTROIDS][MAX_CENTROIDS], int n1, int n2, float unmat
 
             if (star_col == -1) {
                 // step 5b: augment path
-                int path_row[MAX_CENTROIDS * 2];
-                int path_col[MAX_CENTROIDS * 2];
+                int path_row[N_MAX * 2];
+                int path_col[N_MAX * 2];
                 int path_len = 1;
                 path_row[0] = found_row;
                 path_col[0] = found_col;
@@ -177,7 +192,7 @@ int hungarian(float D[MAX_CENTROIDS][MAX_CENTROIDS], int n1, int n2, float unmat
     int count = 0;
     for (int i = 0; i < n1; i++) {
         for (int j = 0; j < n2; j++) {
-            if (starred[i][j] && D[i][j] < unmatched_cost) {
+            if (starred[i][j]) {
                 matches_out[count].from = i;
                 matches_out[count].to = j;
                 count ++;

@@ -21,7 +21,6 @@ typedef struct {
     MatchSet matches;
     Vec2 translations[MAX_CENTROIDS];
     RotationSet rotations;
-    int prev_frame_idx; // index of previous frame in memory
 } ClassifiedFrame;
 
 // classify a new frame of centroids given the memory of previous frames.

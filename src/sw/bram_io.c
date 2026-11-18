@@ -121,9 +121,7 @@ int bram_read_frame(CentroidFrame *frame_out)
     if (last_frame != 0 && frame > last_frame + 1)
         stats.frames_skipped += frame - last_frame - 1;
 
-    // Divide as soon as the sums are out of BRAM. float is exact here: with
-    // area <= 511 the sums stay below 2^24 (511 * 1919 = 980,609), inside
-    // float's 24-bit mantissa.
+    // Divide as soon as the sums are out of BRAM.
     int n = 0;
     for (uint32_t i = 0; i < count; i++) {
         uint32_t x_sum = slot_copy[1 + 2 * i];
@@ -142,8 +140,8 @@ int bram_read_frame(CentroidFrame *frame_out)
             stats.zero_area_entries++;
             continue;
         }
-        frame_out->centroids[n].x    = (float)x_sum / (float)area;
-        frame_out->centroids[n].y    = (float)y_sum / (float)area;
+        frame_out->centroids[n].x    = (double)x_sum / area;
+        frame_out->centroids[n].y    = (double)y_sum / area;
         frame_out->centroids[n].area = (uint16_t)area;
         n++;
     }
