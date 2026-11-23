@@ -50,14 +50,11 @@ static void run(int frame, int classify, const ClassifierConfig *cfg)
 
     trackStep(&tracker, &clf, cfg);
 
-    // objects map to tracker.current.centroids in label order
-    int obj = 0;
-    for (int i = 0; i < clf.labels.count; i++) {
-        int tag = -1;
-        if (clf.labels.labels[i] == LABEL_OBJECT)
-            tag = tracker.current.tags[obj++];
-        printf("%d,%d,%d,%d\n", frame, i, clf.labels.labels[i], tag);
-    }
+    // per-spot tags, as main.c sends them over telemetry
+    static int32_t tags[MAX_CENTROIDS];
+    trackTagsBySpot(&clf.labels, &tracker.current, tags);
+    for (int i = 0; i < clf.labels.count; i++)
+        printf("%d,%d,%d,%d\n", frame, i, clf.labels.labels[i], (int)tags[i]);
 }
 
 int main(int argc, char **argv)

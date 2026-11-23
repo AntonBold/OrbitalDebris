@@ -38,6 +38,10 @@ void trackFrame(const TrackedFrame *prev2, const TrackedFrame *prev, const Class
 // predecessor had none; unmatched objects stay untagged (-1) until matched.
 void tagFrame(const TrackedFrame *prev, TrackedFrame *cur, int *next_tag);
 
+// Track ids per spot of the classified frame (-1 for non-objects and untagged
+// objects), from trk = the trackFrame/trackStep result for that same frame.
+void trackTagsBySpot(const LabelSet *labels, const TrackedFrame *trk, int32_t *tags_out);
+
 // One frame of tracking: trackFrame + tagFrame, then update prev/prev2 as
 // MATLAB Tracker.track does (if prev has objects and this frame has none,
 // keep prev). The result is in state->current.

@@ -10,8 +10,9 @@ Or from a capture (raw bytes, e.g. `cat /dev/ttyUSB1 > capture.bin` after
     python3 scripts/telemetry_decode.py capture.bin --csv run1.csv
 
 Text the PS prints with xil_printf (banner, debug lines) is shown prefixed
-with "| ". --csv writes frame,x,y,label rows, the format of the ground-truth
-CSVs read by src/sw/test_harness.c. Ctrl-C prints a summary.
+with "| ". --csv writes frame,x,y,label,tag rows: the first four columns are
+the format of the ground-truth CSVs read by src/sw/test_harness.c, tag is the
+track id (-1 = none; version 1 packets have no tags). Ctrl-C prints a summary.
 
     python3 scripts/telemetry_decode.py --selftest
 """
@@ -23,14 +24,14 @@ import struct
 import sys
 
 SYNC = b"\xA5\x5A"
-VERSION = 1
+VERSION = 2                         # what encode_frame() writes; the decoder reads 1 and 2
 TYPE_FRAME = 1
 HEADER_BYTES = 6
 FRAME_FIXED = 10
-CENTROID_BYTES = 7
+CENTROID_BYTES = {1: 7, 2: 11}      # v1: x y area label; v2: + tag
 CRC_BYTES = 2
 MAX_CENTROIDS = 256
-MAX_PAYLOAD = FRAME_FIXED + CENTROID_BYTES * MAX_CENTROIDS
+MAX_PAYLOAD = FRAME_FIXED + CENTROID_BYTES[2] * MAX_CENTROIDS
 LABELS = {1: "object", 0: "star", -1: "unknown"}
 
 
@@ -44,14 +45,17 @@ def crc16(data):
     return crc
 
 
-def decode_frame(payload):
+def decode_frame(payload, version):
     frame_number, frames_skipped, count = struct.unpack_from("<IIH", payload, 0)
-    if len(payload) != FRAME_FIXED + CENTROID_BYTES * count:
+    size = CENTROID_BYTES[version]
+    if len(payload) != FRAME_FIXED + size * count:
         return None
     centroids = []
     for i in range(count):
-        x, y, area, label = struct.unpack_from("<HHHb", payload, FRAME_FIXED + CENTROID_BYTES * i)
-        centroids.append({"x": x / 32.0, "y": y / 32.0, "area": area, "label": label})
+        off = FRAME_FIXED + size * i
+        x, y, area, label = struct.unpack_from("<HHHb", payload, off)
+        tag = struct.unpack_from("<i", payload, off + 7)[0] if version >= 2 else -1
+        centroids.append({"x": x / 32.0, "y": y / 32.0, "area": area, "label": label, "tag": tag})
     return {"frame": frame_number, "frames_skipped": frames_skipped, "centroids": centroids}
 
 
@@ -95,7 +99,7 @@ class Decoder:
             if len(self.buf) < HEADER_BYTES:
                 return events
             version, ptype, length = struct.unpack_from("<BBH", self.buf, 2)
-            if version != VERSION or ptype != TYPE_FRAME or length < FRAME_FIXED or length > MAX_PAYLOAD:
+            if version not in CENTROID_BYTES or ptype != TYPE_FRAME or length < FRAME_FIXED or length > MAX_PAYLOAD:
                 self.bad_headers += 1
                 del self.buf[:1]                # not a packet: resync past this byte
                 continue
@@ -105,7 +109,7 @@ class Decoder:
                 return events
             body = bytes(self.buf[2:HEADER_BYTES + length])
             (crc,) = struct.unpack_from("<H", self.buf, HEADER_BYTES + length)
-            frame = decode_frame(body[4:]) if crc16(body) == crc else None
+            frame = decode_frame(body[4:], version) if crc16(body) == crc else None
             if frame is None:
                 self.crc_errors += 1
                 del self.buf[:1]
@@ -164,16 +168,18 @@ def run(args):
                 last = f["frame"]
                 if csv:
                     for c in f["centroids"]:
-                        csv.write("%d,%.5f,%.5f,%d\n" % (f["frame"], c["x"], c["y"], c["label"]))
+                        csv.write("%d,%.5f,%.5f,%d,%d\n" % (f["frame"], c["x"], c["y"], c["label"], c["tag"]))
                 if not args.quiet:
                     labels = [c["label"] for c in f["centroids"]]
-                    print("frame %d: %d centroid(s), %d object, %d star, %d unknown, skipped so far %d"
+                    tracks = sorted(c["tag"] for c in f["centroids"] if c["tag"] >= 0)
+                    print("frame %d: %d centroid(s), %d object, %d star, %d unknown, tracks %s, skipped so far %d"
                           % (f["frame"], len(labels), labels.count(1), labels.count(0),
-                             labels.count(-1), f["frames_skipped"]))
+                             labels.count(-1), tracks, f["frames_skipped"]))
                     if args.verbose:
                         for i, c in enumerate(f["centroids"]):
-                            print("  [%d] x=%.3f y=%.3f area=%d %s"
-                                  % (i, c["x"], c["y"], c["area"], LABELS.get(c["label"], c["label"])))
+                            print("  [%d] x=%.3f y=%.3f area=%d %s%s"
+                                  % (i, c["x"], c["y"], c["area"], LABELS.get(c["label"], c["label"]),
+                                     " track %d" % c["tag"] if c["tag"] >= 0 else ""))
     except KeyboardInterrupt:
         pass
     finally:
@@ -183,12 +189,15 @@ def run(args):
           % (dec.packets, dec.crc_errors, dec.bad_headers, gaps), file=sys.stderr)
 
 
-def encode_frame(frame_number, frames_skipped, centroids):
-    """Python mirror of telemetry_encode_frame(), for --selftest."""
+def encode_frame(frame_number, frames_skipped, centroids, version=VERSION):
+    """Python mirror of telemetry_encode_frame(), for --selftest. Centroids are
+    (x, y, area, label, tag); version 1 leaves the tag out."""
     payload = struct.pack("<IIH", frame_number, frames_skipped, len(centroids))
-    for x, y, area, label in centroids:
+    for x, y, area, label, tag in centroids:
         payload += struct.pack("<HHHb", int(x * 32 + 0.5), int(y * 32 + 0.5), area, label)
-    body = struct.pack("<BBH", VERSION, TYPE_FRAME, len(payload)) + payload
+        if version >= 2:
+            payload += struct.pack("<i", tag)
+    body = struct.pack("<BBH", version, TYPE_FRAME, len(payload)) + payload
     return SYNC + body + struct.pack("<H", crc16(body))
 
 
@@ -202,7 +211,7 @@ def selftest():
 
     check(crc16(b"123456789") == 0x29B1, "CRC-16/CCITT-FALSE check value 0x29B1")
 
-    objs = [(102.0, 102.0, 25, 1), (502.0, 502.0, 25, 0), (807.0, 805.586, 87, -1)]
+    objs = [(102.0, 102.0, 25, 1, 5), (502.0, 502.0, 25, 0, -1), (807.0, 805.586, 87, -1, -1)]
     p1, p2 = encode_frame(1, 0, objs), encode_frame(2, 0, objs[:1])
     noise = b"debris_app: starting\r\n" + b"\xA5\x5A\xFFjunk" + b"x\xA5\x5A\x01\x01\xFF\xFFtail\r\n"
     bad = bytearray(p2)
@@ -223,6 +232,11 @@ def selftest():
         check([(c["x"], c["area"], c["label"]) for c in f] == [(102.0, 25, 1), (502.0, 25, 0), (807.0, 87, -1)],
               "chunk %d: fields decoded" % chunk)
         check(abs(f[2]["y"] - 805.586) <= 1 / 64, "chunk %d: y within 1/64 px (%.5f)" % (chunk, f[2]["y"]))
+        check([c["tag"] for c in f] == [5, -1, -1], "chunk %d: tags decoded" % chunk)
+
+    v1 = Decoder().feed(encode_frame(9, 0, objs, version=1))
+    check([e["frame"] for k, e in v1 if k == "frame"] == [9] and v1[0][1]["centroids"][0]["tag"] == -1,
+          "version 1 packet still decodes (tags -1)")
 
     print("SELFTEST %s" % ("PASSED" if not fails else "FAILED (%d)" % len(fails)))
     return 0 if not fails else 1
@@ -232,7 +246,7 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("source", nargs="?", help="serial device (e.g. /dev/ttyUSB1) or capture file")
     ap.add_argument("--baud", type=int, default=921600)
-    ap.add_argument("--csv", help="write frame,x,y,label rows here")
+    ap.add_argument("--csv", help="write frame,x,y,label,tag rows here")
     ap.add_argument("-v", "--verbose", action="store_true", help="print every centroid")
     ap.add_argument("-q", "--quiet", action="store_true", help="only the final summary (and gaps)")
     ap.add_argument("--selftest", action="store_true")

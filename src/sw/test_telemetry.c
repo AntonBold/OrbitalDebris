@@ -18,6 +18,11 @@ static int failures = 0;
 static uint16_t u16(const uint8_t *p) { return (uint16_t)(p[0] | p[1] << 8); }
 static uint32_t u32(const uint8_t *p) { return u16(p) | (uint32_t)u16(p + 2) << 16; }
 
+static int32_t i32(const uint8_t *p) { return (int32_t)u32(p); }
+
+// track ids for pattern_frame: the object is track 5, the others have none
+static const int32_t pattern_tags[3] = {5, -1, -1};
+
 // pattern_gen's frame as the board reads it, with one label of each kind
 static void pattern_frame(CentroidFrame *f, LabelSet *l, uint32_t frame_number)
 {
@@ -43,32 +48,35 @@ int main(int argc, char **argv)
 
     // ---- one packet, byte by byte -------------------------------------------
     pattern_frame(&f, &l, 7);
-    size_t n = telemetry_encode_frame(&f, &l, 2, buf);
-    CHECK(n == 18 + 7 * 3, "length %zu", n);
+    size_t n = telemetry_encode_frame(&f, &l, pattern_tags, 2, buf);
+    CHECK(n == 18 + 11 * 3, "length %zu", n);
     CHECK(buf[0] == 0xA5 && buf[1] == 0x5A, "sync");
-    CHECK(buf[2] == 1 && buf[3] == 1, "version/type");
-    CHECK(u16(buf + 4) == 10 + 7 * 3, "payload length %u", u16(buf + 4));
+    CHECK(buf[2] == 2 && buf[3] == 1, "version/type");
+    CHECK(u16(buf + 4) == 10 + 11 * 3, "payload length %u", u16(buf + 4));
     CHECK(u32(buf + 6) == 7, "frame number");
     CHECK(u32(buf + 10) == 2, "frames_skipped");
     CHECK(u16(buf + 14) == 3, "count");
     const uint8_t *c = buf + 16;
     CHECK(u16(c) == 102 * 32 && u16(c + 2) == 102 * 32, "c0 x/y %u %u", u16(c), u16(c + 2));
     CHECK(u16(c + 4) == 25 && (int8_t)c[6] == 1, "c0 area/label");
-    CHECK((int8_t)c[7 + 6] == 0, "c1 label star");
-    CHECK(u16(c + 14 + 2) == 25779, "c2 y = round(805.5862 * 32) = 25779, got %u", u16(c + 16));
-    CHECK((int8_t)c[14 + 6] == -1, "c2 label unknown");
+    CHECK(i32(c + 7) == 5, "c0 tag 5, got %d", (int)i32(c + 7));
+    CHECK((int8_t)c[11 + 6] == 0, "c1 label star");
+    CHECK(i32(c + 11 + 7) == -1, "c1 tag -1, got %d", (int)i32(c + 18));
+    CHECK(u16(c + 22 + 2) == 25779, "c2 y = round(805.5862 * 32) = 25779, got %u", u16(c + 24));
+    CHECK((int8_t)c[22 + 6] == -1, "c2 label unknown");
     CHECK(u16(buf + n - 2) == telemetry_crc16(buf + 2, n - 4), "CRC field");
 
     // ---- edge values ----------------------------------------------------------
     f.count = 2;
     f.centroids[0].x = 1919.99f;                // largest x on a 1920-wide frame
     f.centroids[1].x = -1.0f;                   // can't happen; must clamp, not wrap
-    n = telemetry_encode_frame(&f, &l, 0, buf);
+    n = telemetry_encode_frame(&f, &l, NULL, 0, buf);
     CHECK(u16(buf + 16) == 61440, "x 1919.99 -> 61440, got %u", u16(buf + 16));
-    CHECK(u16(buf + 23) == 0, "x -1 clamps to 0, got %u", u16(buf + 23));
+    CHECK(u16(buf + 27) == 0, "x -1 clamps to 0, got %u", u16(buf + 27));
+    CHECK(i32(buf + 16 + 7) == -1 && i32(buf + 27 + 7) == -1, "tags NULL -> -1");
 
     f.count = 0;
-    n = telemetry_encode_frame(&f, &l, 0, buf);
+    n = telemetry_encode_frame(&f, &l, NULL, 0, buf);
     CHECK(n == 18 && u16(buf + 14) == 0, "empty frame: %zu bytes", n);
 
     // ---- stream for the Python decoder ------------------------------------------
@@ -79,7 +87,7 @@ int main(int argc, char **argv)
         fputs("debris_app: starting\r\n", out);
         for (uint32_t fn = 1; fn <= 3; fn++) {
             pattern_frame(&f, &l, fn);
-            n = telemetry_encode_frame(&f, &l, 0, buf);
+            n = telemetry_encode_frame(&f, &l, pattern_tags, 0, buf);
             if (fn == 2)
                 buf[20] ^= 0x40;                // flip a bit in a centroid
             fwrite(buf, 1, n, out);

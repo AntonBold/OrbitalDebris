@@ -67,6 +67,15 @@ void tagFrame(const TrackedFrame *prev, TrackedFrame *cur, int *next_tag)
     }
 }
 
+void trackTagsBySpot(const LabelSet *labels, const TrackedFrame *trk, int32_t *tags_out)
+{
+    // trackFrame takes the objects in label order, so object k is the k-th
+    // spot labelled LABEL_OBJECT
+    int obj = 0;
+    for (int i = 0; i < labels->count; i++)
+        tags_out[i] = labels->labels[i] == LABEL_OBJECT ? trk->tags[obj++] : -1;
+}
+
 void trackStep(TrackerState *s, const ClassifiedFrame *curr_clf, const ClassifierConfig *config)
 {
     trackFrame(s->have_prev2 ? &s->prev2 : NULL, s->have_prev ? &s->prev : NULL,

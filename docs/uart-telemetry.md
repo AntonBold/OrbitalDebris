@@ -1,6 +1,6 @@
 # UART Telemetry Format
 
-**Version:** 1
+**Version:** 2 (v2 adds a track id per centroid; the decoder still reads v1)
 **Link:** PS UART0 (the board's USB-UART), 921600 baud, 8N1
 **Encoder:** `src/sw/telemetry.c` | **Decoder:** `scripts/telemetry_decode.py`
 
@@ -16,7 +16,7 @@ All multi-byte fields are little-endian (the A53's native order).
 | Offset | Size | Field | Notes |
 |---|---|---|---|
 | 0 | 2 | sync | `0xA5 0x5A` |
-| 2 | 1 | version | `1` |
+| 2 | 1 | version | `2` (`1` = old format without tags) |
 | 3 | 1 | type | `1` = frame |
 | 4 | 2 | length | payload bytes, `L` |
 | 6 | L | payload | below |
@@ -32,9 +32,9 @@ reflection, no final XOR. Check value: `"123456789"` gives `0x29B1`.
 | 0 | 4 | frame_number | from the BRAM header (1 = first frame after PL reset) |
 | 4 | 4 | frames_skipped | cumulative frames the PS fell behind on (`BramStats.frames_skipped`) |
 | 8 | 2 | count | centroids in this packet, 0..256 |
-| 10 | 7 x count | centroids | below |
+| 10 | 11 x count | centroids | below (7 x count in v1) |
 
-Each centroid, 7 bytes:
+Each centroid, 11 bytes (v1: the first 7):
 
 | Offset | Size | Field | Notes |
 |---|---|---|---|
@@ -42,24 +42,26 @@ Each centroid, 7 bytes:
 | 2 | 2 | y | unsigned, units of 1/32 pixel |
 | 4 | 2 | area | pixels (9 bits from the PL, RTL known issue 3) |
 | 6 | 1 | label | signed: `1` object, `0` star, `-1` unknown |
+| 7 | 4 | tag | signed track id from the tracker (`TrackedFrame.tags`, MATLAB `makeTags` rule); `-1` = none (not an object, or an object in its first tracked frame). v2 only |
 
-`L = 10 + 7 x count`. Centroids are in BRAM order, the same order as
-`ClassifiedFrame.frame` / `.labels`.
+`L = 10 + 11 x count` (v1: `10 + 7 x count`). Centroids are in BRAM order, the same order as
+`ClassifiedFrame.frame` / `.labels`; `trackTagsBySpot()` maps the tracker's per-object tags to that order.
 
 1/32 pixel: 1919.97 x 32 = 61439 fits in 16 bits. The encoder rounds to
 nearest, so a centroid is off by at most 1/64 pixel.
 
 ## Bandwidth
 
-A packet is `18 + 7 x count` bytes. At 921600 baud (92,160 bytes/s) and
-60 fps there are 1,536 bytes per frame, enough for 217 centroids. Past that
-the PS's UART writes take longer than a frame and it falls behind, which
-shows up as `frames_skipped` growing. The UART writes are blocking (polled);
+A packet is `18 + 11 x count` bytes. At 921600 baud (92,160 bytes/s) and
+30 fps (1080p30 over HDMI) there are 3,072 bytes per frame, enough for 277
+centroids, so a full frame (256 centroids, 2,834 bytes) fits. Past that the
+PS's UART writes take longer than a frame and it falls behind, which shows up
+as `frames_skipped` growing. The UART writes are blocking (polled);
 an interrupt-driven TX would let processing overlap the send.
 
 ## Decoder output
 
 `scripts/telemetry_decode.py --csv out.csv` writes one row per centroid as
-`frame,x,y,label`, the same columns as the ground-truth CSVs that
-`src/sw/test_harness.c` reads, so board output and ground truth can be
-compared row for row.
+`frame,x,y,label,tag`. The first four columns are the same as the
+ground-truth CSVs that `src/sw/test_harness.c` reads, so board output and
+ground truth can be compared row for row; `tag` is `-1` for v1 packets.

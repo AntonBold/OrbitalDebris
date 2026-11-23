@@ -40,7 +40,7 @@ uint16_t telemetry_crc16(const uint8_t *data, size_t len)
 }
 
 size_t telemetry_encode_frame(const CentroidFrame *frame, const LabelSet *labels,
-                              uint32_t frames_skipped, uint8_t *buf)
+                              const int32_t *tags, uint32_t frames_skipped, uint8_t *buf)
 {
     int count = frame->count;
     if (count > MAX_CENTROIDS)
@@ -68,6 +68,7 @@ size_t telemetry_encode_frame(const CentroidFrame *frame, const LabelSet *labels
         put_u16(p + 2, to_q5(c->y));
         put_u16(p + 4, c->area);
         p[6] = (uint8_t)(i < labels->count ? labels->labels[i] : LABEL_UNKNOWN);
+        put_u32(p + 7, (uint32_t)(tags != NULL ? tags[i] : -1));
         p += TELEMETRY_CENTROID_BYTES;
     }
 
@@ -109,9 +110,9 @@ int telemetry_uart_init(void)
 }
 
 void telemetry_send_frame(const CentroidFrame *frame, const LabelSet *labels,
-                          uint32_t frames_skipped)
+                          const int32_t *tags, uint32_t frames_skipped)
 {
-    size_t n = telemetry_encode_frame(frame, labels, frames_skipped, packet);
+    size_t n = telemetry_encode_frame(frame, labels, tags, frames_skipped, packet);
     // outbyte is xil_printf's polled byte writer, so packets and text
     // can't interleave mid-byte
     for (size_t i = 0; i < n; i++)

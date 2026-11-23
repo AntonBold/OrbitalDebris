@@ -58,6 +58,7 @@ static int clf_memory_count = 0;
 // current classified frame and tracker state (track ids in tracker.current.tags)
 static ClassifiedFrame clf_current;
 static TrackerState tracker;
+static int32_t spot_tags[MAX_CENTROIDS];     // track id per centroid, for telemetry
 
 // Main --
 
@@ -135,8 +136,10 @@ int main(void)
         // track objects: matches + tags in tracker.current
         trackStep(&tracker, &clf_current, &config);
 
-        // one packet per frame: centroids and their labels
-        telemetry_send_frame(&clf_current.frame, &clf_current.labels, bram_get_stats()->frames_skipped);
+        // one packet per frame: centroids, labels and track ids
+        trackTagsBySpot(&clf_current.labels, &tracker.current, spot_tags);
+        telemetry_send_frame(&clf_current.frame, &clf_current.labels, spot_tags,
+                             bram_get_stats()->frames_skipped);
 
         // update classifier memory ring bufffer
         if (clf_memory_count < MEMORY_LEN) {
