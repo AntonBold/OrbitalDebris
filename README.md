@@ -65,7 +65,7 @@ Earlier branches were merged and deleted: `centroiding` (CCA, PR #2), `pl_ps` (P
 | [`docs/pix_2to1_spec.md`](docs/pix_2to1_spec.md) | 2:1 pixel converter and start-of-frame gate: interface, behaviour, requirements, test plan |
 | [`docs/PLAN.md`](docs/PLAN.md) | HDMI → centroiding integration plan and status, to the Dec 11 demo |
 | [`docs/pl-ps_interface_spec.md`](docs/pl-ps_interface_spec.md) | PL → PS handoff (v0.3): BRAM layout, word formats, interrupt protocol, reset, frame trigger, limits |
-| [`docs/uart-telemetry.md`](docs/uart-telemetry.md) | Binary UART telemetry packet format (921600 baud) and the decoder |
+| [`docs/uart-telemetry.md`](docs/uart-telemetry.md) | Binary UART telemetry packet format (1500000 baud) and the decoder |
 | `compression_scripts/README.md` | How to produce 1-bit-per-pixel test video |
 
 ### Figures
@@ -141,7 +141,7 @@ vitis -s scripts/create_vitis.py
 #    after editing src/sw only:  vitis -s scripts/build_app.py
 
 # 4. Board in JTAG boot mode. Start the decoder, then program and run
-python3 scripts/telemetry_decode.py --baud 921600 /dev/ttyUSB1 --csv results/run.csv   # terminal 1
+python3 scripts/telemetry_decode.py --baud 1500000 /dev/ttyUSB1 --csv results/run.csv   # terminal 1
 xsdb scripts/run_board.tcl                                 # terminal 2
 ```
 

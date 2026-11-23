@@ -1,7 +1,7 @@
 # UART Telemetry Format
 
 **Version:** 2 (v2 adds a track id per centroid; the decoder still reads v1)
-**Link:** PS UART0 (the board's USB-UART), 921600 baud, 8N1
+**Link:** PS UART0 (the board's USB-UART), 1500000 baud, 8N1 (921600 before telemetry v2)
 **Encoder:** `src/sw/telemetry.c` | **Decoder:** `scripts/telemetry_decode.py`
 
 The PS sends one binary packet per frame after classifying it. Text from
@@ -52,9 +52,10 @@ nearest, so a centroid is off by at most 1/64 pixel.
 
 ## Bandwidth
 
-A packet is `18 + 11 x count` bytes. At 921600 baud (92,160 bytes/s) and
-30 fps (1080p30 over HDMI) there are 3,072 bytes per frame, enough for 277
-centroids, so a full frame (256 centroids, 2,834 bytes) fits. Past that the
+A packet is `18 + 11 x count` bytes. At 1500000 baud (150,000 bytes/s) and
+30 fps (1080p30 over HDMI) there are 5,000 bytes per frame, enough for 452
+centroids, so a full frame (256 centroids, 2,834 bytes) fits. A typical frame
+(~120 centroids, ~1,340 bytes) takes ~9 ms to send (14 ms at 921600). Past that the
 PS's UART writes take longer than a frame and it falls behind, which shows up
 as `frames_skipped` growing. The UART writes are blocking (polled);
 an interrupt-driven TX would let processing overlap the send.

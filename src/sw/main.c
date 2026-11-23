@@ -12,7 +12,7 @@
 #include "hdmi/hdmi_rx.h"
 
 // Each classified frame goes out as a binary telemetry packet on UART0 at
-// 921600 baud (docs/uart-telemetry.md; decode with scripts/telemetry_decode.py).
+// 1500000 baud (docs/uart-telemetry.md; decode with scripts/telemetry_decode.py).
 // Frames are read on the interrupt; if interrupt_init() fails the loop falls
 // back to polling the BRAM.
 //
@@ -64,7 +64,7 @@ static int32_t spot_tags[MAX_CENTROIDS];     // track id per centroid, for telem
 
 int main(void)
 {
-    // First, before anything is printed: every byte after this is at 921600
+    // First, before anything is printed: every byte after this is at TELEMETRY_BAUD
     int tel_ok = (telemetry_uart_init() == 0);
 
     // Stop the generator (after its current frame) before clearing the
@@ -87,7 +87,7 @@ int main(void)
 
     xil_printf("debris_app: BRAM at 0x%08x, interrupt init %s, %s\r\n", BRAM_BASE_ADDR,
                irq_ok ? "ok" : "FAILED", use_irq ? "waiting on interrupts" : "polling the BRAM");
-    xil_printf("debris_app: telemetry %s\r\n", tel_ok ? "at 921600 baud" : "UART init FAILED, still at boot baud");
+    xil_printf("debris_app: telemetry %s\r\n", tel_ok ? "at 1500000 baud" : "UART init FAILED, still at boot baud");
     bram_print_headers();
 
     // HDMI build: bring up the RX (Si5342, video PHY, RX subsystem, EDID)

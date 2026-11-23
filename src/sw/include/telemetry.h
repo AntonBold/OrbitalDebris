@@ -7,7 +7,7 @@
 #include <stdint.h>
 #include "centroid.h"
 
-#define TELEMETRY_BAUD          921600u
+#define TELEMETRY_BAUD          1500000u    // was 921600; v2 packets took ~14 ms of the 33 ms frame
 
 #define TELEMETRY_SYNC0         0xA5u
 #define TELEMETRY_SYNC1         0x5Au

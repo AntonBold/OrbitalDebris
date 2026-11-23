@@ -10,7 +10,7 @@
 #
 # Needs: board in JTAG boot mode and powered; build/pl_ps.xsa and the
 # bitstream (scripts/generate_bitstream.tcl); vitis/debris_app built. Start
-# scripts/telemetry_decode.py (UART0, 921600 baud: the app switches to it
+# scripts/telemetry_decode.py (UART0, 1500000 baud: the app switches to it
 # before its first print, docs/uart-telemetry.md) before running. Close Vitis's debug session
 # first so it isn't holding the JTAG cable.
 # =============================================================================

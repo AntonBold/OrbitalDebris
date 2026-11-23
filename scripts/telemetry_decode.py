@@ -6,7 +6,7 @@ Read live from the board (configures the serial port itself, no pyserial):
     python3 scripts/telemetry_decode.py /dev/ttyUSB1 --csv run1.csv
 
 Or from a capture (raw bytes, e.g. `cat /dev/ttyUSB1 > capture.bin` after
-`stty -F /dev/ttyUSB1 921600 raw -echo`):
+`stty -F /dev/ttyUSB1 1500000 raw -echo`):
     python3 scripts/telemetry_decode.py capture.bin --csv run1.csv
 
 Text the PS prints with xil_printf (banner, debug lines) is shown prefixed
@@ -245,7 +245,7 @@ def selftest():
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("source", nargs="?", help="serial device (e.g. /dev/ttyUSB1) or capture file")
-    ap.add_argument("--baud", type=int, default=921600)
+    ap.add_argument("--baud", type=int, default=1500000)
     ap.add_argument("--csv", help="write frame,x,y,label,tag rows here")
     ap.add_argument("-v", "--verbose", action="store_true", help="print every centroid")
     ap.add_argument("-q", "--quiet", action="store_true", help="only the final summary (and gaps)")
