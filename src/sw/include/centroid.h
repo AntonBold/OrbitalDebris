@@ -8,7 +8,7 @@
 #define MAX_CENTROIDS   256
 #define MAX_OBJECTS     10
 #define UNMATCHED_COST  100
-#define DELTA           1
+#define DELTA           5
 #define EPS             1e-2f
 #define INF             1e5f
 #define MEMORY_LEN      (2 * DELTA)
