@@ -55,11 +55,9 @@ static const ClassifierConfig config = {
 static ClassifiedFrame clf_memory[MEMORY_LEN];
 static int clf_memory_count = 0;
 
-// current classified and tracked frames
+// current classified frame and tracker state (track ids in tracker.current.tags)
 static ClassifiedFrame clf_current;
-static TrackedFrame trk_prev;
-static TrackedFrame trk_current;
-static int trk_initialized = 0;
+static TrackerState tracker;
 
 // Main --
 
@@ -134,14 +132,11 @@ int main(void)
         // classify the new frame
         classifyFrame(clf_memory, clf_memory_count, &new_frame, &config, &clf_current);
 
-        // track objects
-        trackFrame(trk_initialized ? &trk_prev : NULL, &clf_current, &config, &trk_current);
+        // track objects: matches + tags in tracker.current
+        trackStep(&tracker, &clf_current, &config);
 
         // one packet per frame: centroids and their labels
         telemetry_send_frame(&clf_current.frame, &clf_current.labels, bram_get_stats()->frames_skipped);
-
-        trk_prev = trk_current;
-        trk_initialized = 1;
 
         // update classifier memory ring bufffer
         if (clf_memory_count < MEMORY_LEN) {
