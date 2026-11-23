@@ -16,11 +16,17 @@ Demo: 2026-12-11. Req IDs → https://claude.ai/artifact/Qs3cKKW3BTtnfsy52Njzy5.
 - Routed timing at 75 MHz: WNS +0.65 ns.
 - PS built with `-O2`. At ~120 centroids/frame classify + track keeps up.
 
+## State (2026-11-23): classification
+
+- **PS classifier matches the MATLAB/paper baseline** (branch `classifier-fixes`): GESD as MATLAB `isoutlier`, rotation-center median, rotation frames, positions in `double`, `matchpairs`-equivalent assignment, rotation/translation prediction, delay `d`. Host harness: Run 1 TPR 0.901 / TNR 0.995, Run 5 0.9999 / 0.998.
+- **On the board, d = 5** (chosen with `scripts/classify_sweep.py` on board-like Run 9: whole pixels, 30 fps): TPR 0.983, TNR 0.991, ~1 false object per frame (`results/run5.csv`, checked with `scripts/classify_check.py`). The board reproduces the host's labels exactly; the limit is the whole-pixel video, not the code. d = 1 gave TPR 0.625 (`results/run4.csv`).
+- **Known limitation:** after a scene discontinuity (video loop, HDMI re-lock) the PS drops ~30 frames over ~1.5 s, because for 2d frames the matcher pairs unrelated star fields (its worst case), then recovers. Steady state: 0 dropped frames. Accepted; a faster solver (Jonker–Volgenant) is the fix if needed.
+
 ## Open
 
 - [x] D2: threshold = MATLAB `rgb2gray`, foreground = grey > 64 (verified on Run 9; objects are grey 244 on 0)
 - [ ] D4: start-of-frame gate (OUT-4) is in `pix_2to1`. Error flag (OUT-6) owner still open
-- [ ] PS labels (star/object) vs the MATLAB reference on the same frames (board sees every other frame of the 60 fps video)
+- [x] PS labels (star/object) vs the MATLAB reference on the same frames (board sees every other frame of the 60 fps video): see State 2026-11-23
 
 ## Phase 0 — blockers (Nov 9–12)
 

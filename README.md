@@ -8,7 +8,9 @@ FPGA-accelerated video processing pipeline for classifying and tracking orbital 
 **Status (2026-11-13): end-to-end on live HDMI video.** A laptop plays the advisor's star-field video (`SampleDataRun9.mp4`) full-screen over HDMI at 1920×1080p30. The board thresholds it, runs CCA in the PL, and classifies and tracks on the PS at the full 30 frames/s (no frames skipped). Every board centroid matched the source video pixel-exactly in the frames checked (`results/run2.csv` against `scripts/golden/png_frame.py`; 10 frames, 116–123 objects each, 0 missing, 0 extra). Timing is met at 75 MHz (WNS +0.65 ns).
 
 - **Pipeline:** HDMI RX Subsystem (2 px/clk) → `threshold` (grey > 64) → `pix_2to1` (2 px/beat → 1 px/clk, start-of-frame gate) → `cca_top` → BRAM + interrupt → PS → UART telemetry.
-- **Not yet verified:** the PS's star/object labels against the MATLAB reference; a 10-minute soak; HDMI replug.
+- **Classification (2026-11-23):** the PS classifier now matches the advisor's MATLAB/paper baseline. On the board (Run 9 over HDMI, delay d = 5) it finds 98.3% of objects with 99.1% of stars correct (`results/run5.csv` against the ground truth in `original_data/`, `scripts/classify_check.py`). The remaining error comes from the video's whole-pixel positions, not the code.
+- **Known limitation:** after a scene discontinuity (the video looping, an HDMI re-lock) the PS skips ~30 frames over ~1.5 s, then recovers. No frames are skipped in steady state.
+- **Not yet verified:** tracking IDs on the board; a 10-minute soak; HDMI replug.
 - **Fallback build:** `create_project.tcl -tclargs pattern` swaps HDMI for the on-chip test pattern (3 static shapes + 1 moving square).
 
 ---
